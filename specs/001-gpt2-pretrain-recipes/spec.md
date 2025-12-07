@@ -52,12 +52,30 @@ A user loads the trained model and tokenizer, provides a prompt such as "Ingredi
 
 ---
 
+### User Story 4 - Instruction Fine-tune for Recipe Generation (Priority: P4)
+
+A user fine-tunes the pre-trained recipe model to follow natural language instructions using an Alpaca-style dataset, enabling conversational recipe generation.
+
+**Why this priority**: After pre-training learns domain knowledge, instruction fine-tuning aligns the model to follow user requests, making it practically useful as a recipe assistant.
+
+**Independent Demonstration**: Run Phase 2 cells; provide instruction prompts like "Give me a recipe for chocolate cake"; verify model generates relevant recipe responses in the expected format.
+
+**Acceptance Scenarios**:
+
+1. **Given** a pre-trained GPT-2 recipe model and an Alpaca-style JSONL dataset with `instruction` and `response` fields, **When** the user executes fine-tuning for 3 epochs with lower learning rate (1e-5), **Then** the model learns to generate responses following the `### Instruction: / ### Response:` template.
+2. **Given** a fine-tuned model, **When** the user provides an instruction like "How do I make pasta carbonara?", **Then** the model generates a coherent recipe response that addresses the specific request.
+3. **Given** an instruction dataset with validation errors, **When** the user loads the dataset, **Then** the system reports specific errors (missing fields, empty content, invalid JSON) and skips invalid entries.
+
+---
+
 ### Edge Cases
 
 - What happens when a recipe row exceeds 3000 characters? Rows longer than the max sequence length are truncated during tokenization; padding is applied to shorter rows.
 - How does the system handle GPU unavailability? The environment-setup cell checks for GPU; if none is detected, a warning is printed and training proceeds on CPU (slower but functional).
 - What if the tokenizer encounters a character not seen during training? The [UNK] special token is used; the tokenizer vocabulary includes a fallback.
 - How does the system handle space-padding in input data? The tokenizer treats spaces as regular tokens; attention masks ensure padded positions do not influence loss.
+- What if the instruction JSONL file has malformed entries? The validation function reports line numbers and error types; only valid samples are used for training.
+- What if the pre-trained model checkpoint is missing? The system raises FileNotFoundError with instructions to complete Phase 1 first.
 
 ## Requirements *(mandatory)*
 
@@ -76,6 +94,15 @@ A user loads the trained model and tokenizer, provides a prompt such as "Ingredi
 - **FR-011**: System MUST save model checkpoints to disk after every epoch (10 checkpoints total).
 - **FR-012**: System MUST provide an inference routine that loads the saved model and tokenizer, accepts a text prompt, and generates continuation text.
 
+### Functional Requirements (Phase 2: Instruction Fine-tuning)
+
+- **FR-013**: System MUST load a pre-trained model and tokenizer from Phase 1 output directory.
+- **FR-014**: System MUST validate Alpaca-style JSONL instruction datasets, reporting errors for missing `instruction` or `response` fields, empty content, or invalid JSON.
+- **FR-015**: System MUST format instruction-response pairs using the template: `### Instruction:\n{instruction}\n\n### Response:\n{response}[EOS]`.
+- **FR-016**: System MUST implement an InstructionDataset class that formats and tokenizes instruction-response pairs on-the-fly.
+- **FR-017**: System MUST fine-tune using a lower learning rate (1e-5) than pre-training to preserve domain knowledge while learning instruction-following.
+- **FR-018**: System MUST provide an instruction-following inference function that formats user input as an instruction prompt and extracts only the generated response.
+
 ### Key Entities
 
 - **Recipe**: A single training example on one line comprising Recipe Name, Ingredients, Instructions concatenated with [BOS] prefix and [EOS] suffix; max 3000 characters; space-padded.
@@ -83,6 +110,8 @@ A user loads the trained model and tokenizer, provides a prompt such as "Ingredi
 - **Model**: A GPT-2 Mini architecture (6 layers, 512 embedding dimension, 8 attention heads, ~50M parameters) initialized with random weights.
 - **Checkpoint**: Serialized model weights and tokenizer files stored on disk after each epoch (10 total), loadable for inference.
 - **Data Source**: Recipe text file uploaded directly to Colab runtime.
+- **Instruction Sample**: A single fine-tuning example in Alpaca-style JSONL format with `instruction` field (user request) and `response` field (recipe content); one JSON object per line.
+- **Fine-tuned Model**: The instruction-aligned model saved after Phase 2, capable of following user instructions to generate recipes.
 
 ## Success Criteria *(mandatory)*
 
@@ -93,3 +122,10 @@ A user loads the trained model and tokenizer, provides a prompt such as "Ingredi
 - **SC-003**: Training loss decreases over the course of training (final loss < initial loss).
 - **SC-004**: Inference generates at least 50 new tokens of coherent recipe-style text given the prompt "Ingredients: Chicken". Coherent is defined as: output contains at least one ingredient name AND at least one cooking verb (e.g., "cook", "bake", "mix", "stir", "add").
 - **SC-005**: End-to-end notebook execution (setup → tokenizer → dataset → training → inference) completes in under 2 hours on Colab A100 GPU with the 8,500-recipe dataset.
+
+### Measurable Outcomes (Phase 2: Instruction Fine-tuning)
+
+- **SC-006**: Instruction fine-tuning runs for 3 full epochs without out-of-memory errors on Colab A100 GPU.
+- **SC-007**: Fine-tuning loss decreases over the course of training (final loss < initial loss).
+- **SC-008**: Given the instruction "Give me a recipe for chocolate cake", the model generates a response containing at least one ingredient AND at least one cooking step.
+- **SC-009**: The instruction-following inference function correctly extracts only the response portion (after `### Response:`), excluding the instruction prompt from output.

@@ -112,11 +112,13 @@ TRAINING_CONFIG = {
     "weight_decay": 0.01,                      # L2 regularization
     "warmup_steps": 500,                       # Linear warmup steps
     "fp16": True,                              # Mixed precision training
+    "logging_dir": "./logs",                   # TensorBoard logs directory
     "logging_steps": 100,                      # Log every N steps
     "save_strategy": "epoch",                  # Save checkpoint every epoch
     "save_total_limit": 10,                    # Keep all 10 epoch checkpoints
     "output_dir": "./gpt2-recipe-checkpoints", # Checkpoint directory
     "report_to": "none",                       # Disable wandb/tensorboard
+    "seed": 42,                                # Random seed for reproducibility
 }
 ```
 
@@ -133,6 +135,33 @@ INFERENCE_CONFIG = {
     "top_p": 0.92,                  # Nucleus sampling threshold
     "do_sample": True,              # Enable sampling (vs greedy)
     "repetition_penalty": 1.1,      # Penalize repeated tokens
+    "no_repeat_ngram_size": 3,      # Prevent repeating 3-grams
+}
+```
+
+### Section 0.5: Fine-tuning Hyperparameters (Phase 2)
+
+```python
+# ============================================================================
+# SECTION 0.5: FINE-TUNING HYPERPARAMETERS (PHASE 2)
+# ============================================================================
+FINETUNE_CONFIG = {
+    "num_train_epochs": 3,                      # Fewer epochs for fine-tuning
+    "per_device_train_batch_size": 2,           # Smaller batch for instruction data
+    "gradient_accumulation_steps": 8,           # Effective batch size = 2 * 8 = 16
+    "learning_rate": 1e-5,                      # Lower LR for fine-tuning (10x lower)
+    "weight_decay": 0.01,                       # L2 regularization
+    "warmup_ratio": 0.1,                        # 10% warmup (ratio-based)
+    "fp16": True,                               # Mixed precision training
+    "logging_dir": "./logs_finetune",           # Separate logs for fine-tuning
+    "logging_steps": 50,                        # More frequent logging
+    "save_strategy": "epoch",                   # Save checkpoint every epoch
+    "save_total_limit": 3,                      # Keep last 3 checkpoints
+    "output_dir": "./gpt2-recipe-instruct",     # Fine-tuned model checkpoints
+    "report_to": "none",                        # Disable wandb/tensorboard
+    "dataloader_num_workers": 2,                # Data loading workers
+    "seed": 42,                                 # Random seed
+    "max_seq_length": 1024,                     # Shorter sequences for instructions
 }
 ```
 
@@ -189,9 +218,43 @@ GPT2_Recipe_Pretraining.ipynb
 │   ├── 7.2 Generate Recipe from Prompt
 │   └── 7.3 Interactive Generation Examples
 │
-└── SECTION 8: CLEANUP & EXPORT
-    ├── 8.1 Save Final Model
-    └── 8.2 Download Artifacts (optional)
+├── SECTION 8: CLEANUP & EXPORT
+│   ├── 8.1 Save Final Model
+│   └── 8.2 Download Artifacts (optional)
+│
+├── ═══════════════════════════════════════════════════════════════════════════
+│   PHASE 2: INSTRUCTION FINE-TUNING (ALIGNMENT)
+│   ═══════════════════════════════════════════════════════════════════════════
+│
+├── SECTION 9: PHASE 2 CONFIGURATION
+│   ├── 9.1 Phase 2 User Inputs (INSTRUCTION_FILE_PATH)
+│   └── 9.2 Fine-tuning Hyperparameters (FINETUNE_CONFIG)
+│
+├── SECTION 10: LOAD PHASE 1 ARTIFACTS
+│   └── 10.1 Load Pre-trained Model & Tokenizer
+│
+├── SECTION 11: INSTRUCTION DATASET PREPARATION
+│   ├── 11.1 Dataset Validation Function
+│   ├── 11.2 Load and Validate Instruction Dataset
+│   ├── 11.3 Instruction Formatting Function
+│   ├── 11.4 InstructionDataset Class Definition
+│   └── 11.5 Create Instruction Dataset
+│
+├── SECTION 12: INSTRUCTION FINE-TUNING
+│   ├── 12.1 Configure Fine-tuning TrainingArguments
+│   ├── 12.2 Initialize Fine-tuning Trainer
+│   ├── 12.3 Execute Fine-tuning Loop
+│   ├── 12.4 Visualize Fine-tuning Loss Curve
+│   └── 12.5 Save Fine-tuned Model
+│
+├── SECTION 13: INTERACTIVE INFERENCE
+│   ├── 13.1 Instruction-following Generation Function
+│   ├── 13.2 Example Generations
+│   └── 13.3 Interactive Chat Loop
+│
+└── SECTION 14: PHASE 2 EXPORT & SUMMARY
+    ├── 14.1 Download Fine-tuned Model (Colab)
+    └── 14.2 Complete Pipeline Summary
 ```
 
 ---
@@ -282,6 +345,56 @@ outputs/                              # Generated at runtime (gitignored)
 | 7.2 | Generate recipe from "Ingredients: Chicken" | ✅ Spec SC-004 |
 | 7.3 | Provide interactive examples | ✅ Demonstration-based |
 
+### Phase 6: Export (Section 8)
+
+| Step | Description | Constitution Compliance |
+|------|-------------|------------------------|
+| 8.1 | Save final model to disk | ✅ Checkpoint artifacts |
+| 8.2 | Zip and download artifacts | ✅ Colab-compatible |
+
+### Phase 7: Instruction Fine-tuning Setup (Sections 9-10)
+
+| Step | Description | Constitution Compliance |
+|------|-------------|------------------------|
+| 9.1 | Configure instruction file path | ✅ Clear user input |
+| 9.2 | Define FINETUNE_CONFIG hyperparameters | ✅ Centralized config |
+| 10.1 | Load pre-trained model and tokenizer | ✅ Spec FR-013 |
+
+### Phase 8: Instruction Dataset (Section 11)
+
+| Step | Description | Constitution Compliance |
+|------|-------------|------------------------|
+| 11.1 | Define validation function for Alpaca JSONL | ✅ Spec FR-014 |
+| 11.2 | Load and validate instruction dataset | ✅ Error reporting |
+| 11.3 | Define format_instruction() with template | ✅ Spec FR-015 |
+| 11.4 | Define InstructionDataset class | ✅ Spec FR-016, PyTorch native |
+| 11.5 | Create instruction dataset instance | ✅ Dataset preparation |
+
+### Phase 9: Fine-tuning (Section 12)
+
+| Step | Description | Constitution Compliance |
+|------|-------------|------------------------|
+| 12.1 | Configure TrainingArguments (lower LR) | ✅ Spec FR-017 |
+| 12.2 | Initialize Trainer for fine-tuning | ✅ HF Trainer |
+| 12.3 | Execute fine-tuning for 3 epochs | ✅ Spec SC-006 |
+| 12.4 | Plot fine-tuning loss curve | ✅ Mandated viz |
+| 12.5 | Save fine-tuned model | ✅ Checkpoint artifacts |
+
+### Phase 10: Interactive Inference (Section 13)
+
+| Step | Description | Constitution Compliance |
+|------|-------------|------------------------|
+| 13.1 | Define generate_from_instruction() | ✅ Spec FR-018 |
+| 13.2 | Demonstrate with example instructions | ✅ Spec SC-008 |
+| 13.3 | Provide interactive chat loop | ✅ Demonstration-based |
+
+### Phase 11: Final Export (Section 14)
+
+| Step | Description | Constitution Compliance |
+|------|-------------|------------------------|
+| 14.1 | Download fine-tuned model artifacts | ✅ Colab-compatible |
+| 14.2 | Display complete pipeline summary | ✅ Informative |
+
 ---
 
 ## Complexity Tracking
@@ -299,10 +412,14 @@ outputs/                              # Generated at runtime (gitignored)
 | Metric | Target | Measurement |
 |--------|--------|-------------|
 | Tokenizer training time | <5 minutes | Cell execution time |
-| Training completion | 10 epochs, no OOM | Trainer logs |
-| Loss trend | final_loss < initial_loss | Loss curve visualization |
-| Generation quality | 50+ coherent tokens | Manual inspection |
-| Total runtime | <2 hours | Notebook execution time |
+| Phase 1 training completion | 10 epochs, no OOM | Trainer logs |
+| Phase 1 loss trend | final_loss < initial_loss | Loss curve visualization |
+| Pre-training generation quality | 50+ coherent tokens | Manual inspection |
+| Phase 1 runtime | <2 hours | Notebook execution time |
+| Phase 2 fine-tuning completion | 3 epochs, no OOM | Trainer logs |
+| Phase 2 loss trend | final_loss < initial_loss | Loss curve visualization |
+| Instruction-following quality | Relevant recipe for instruction | Manual inspection |
+| Total pipeline runtime | <3 hours | End-to-end execution time |
 
 ---
 
@@ -320,6 +437,8 @@ outputs/                              # Generated at runtime (gitignored)
 ## Next Steps
 
 1. **Create tasks.md**: Run `/speckit.tasks` to generate implementation task list
-2. **Create notebook**: Implement sections 0-8 following this plan
-3. **Execute on Colab**: Upload recipe dataset and run end-to-end
-4. **Validate success criteria**: Confirm all SC-001 through SC-005 metrics
+2. **Create notebook**: Implement sections 0-14 following this plan
+3. **Execute Phase 1 on Colab**: Upload recipe dataset and run pre-training (Sections 0-8)
+4. **Prepare instruction dataset**: Create Alpaca-style JSONL with instruction-response pairs
+5. **Execute Phase 2 on Colab**: Run instruction fine-tuning (Sections 9-14)
+6. **Validate success criteria**: Confirm all SC-001 through SC-009 metrics

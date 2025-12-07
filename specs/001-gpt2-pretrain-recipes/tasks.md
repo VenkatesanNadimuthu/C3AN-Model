@@ -116,6 +116,40 @@
 - [X] T032 Add notebook header markdown with title, description, Colab Pro setup instructions (Runtime > Change runtime type > A100) in notebooks/GPT2_Recipe_Pretraining.ipynb
 - [X] T033 Add section divider markdown cells between major sections in notebooks/GPT2_Recipe_Pretraining.ipynb
 
+**Checkpoint**: Phase 1 complete - all pre-training functionality implemented
+
+---
+
+## Phase 7: User Story 4 - Instruction Fine-tuning (Priority: P4)
+
+**Goal**: Fine-tune the pre-trained model on Alpaca-style instruction data to enable conversational recipe generation
+
+**Independent Demonstration**: Run Phase 2 cells; provide instruction like "Give me a recipe for chocolate cake"; verify model generates relevant recipe response
+
+### Implementation for User Story 4
+
+- [X] T034 [US4] Add Phase 2 header markdown cell explaining instruction fine-tuning goal in notebooks/GPT2_Recipe_Pretraining.ipynb
+- [X] T035 [US4] Add Section 9.1: Phase 2 User Inputs cell (INSTRUCTION_FILE_PATH, PRETRAINED_MODEL_PATH) in notebooks/GPT2_Recipe_Pretraining.ipynb
+- [X] T036 [US4] Add Section 9.2: Fine-tuning Hyperparameters cell (FINETUNE_CONFIG dict with lower LR, fewer epochs) in notebooks/GPT2_Recipe_Pretraining.ipynb
+- [X] T037 [US4] Add Section 10.1: Load Pre-trained Model & Tokenizer cell (from Phase 1 output) in notebooks/GPT2_Recipe_Pretraining.ipynb
+- [X] T038 [US4] Add Section 11.1: Dataset Validation Function cell (validate_instruction_dataset for Alpaca JSONL) in notebooks/GPT2_Recipe_Pretraining.ipynb
+- [X] T039 [US4] Add Section 11.2: Load and Validate Instruction Dataset cell (report errors, preview samples) in notebooks/GPT2_Recipe_Pretraining.ipynb
+- [X] T040 [US4] Add Section 11.3: Instruction Formatting Function cell (format_instruction with ### Instruction/Response template) in notebooks/GPT2_Recipe_Pretraining.ipynb
+- [X] T041 [US4] Add Section 11.4: InstructionDataset Class Definition cell (torch.utils.data.Dataset for instruction data) in notebooks/GPT2_Recipe_Pretraining.ipynb
+- [X] T042 [US4] Add Section 11.5: Create Instruction Dataset cell (instantiate with FINETUNE_CONFIG max_seq_length) in notebooks/GPT2_Recipe_Pretraining.ipynb
+- [X] T043 [US4] Add Section 12.1: Fine-tuning TrainingArguments cell (LR=1e-5, epochs=3, warmup_ratio) in notebooks/GPT2_Recipe_Pretraining.ipynb
+- [X] T044 [US4] Add Section 12.2: Initialize Fine-tuning Trainer cell (ft_trainer with ft_model, instruct_dataset) in notebooks/GPT2_Recipe_Pretraining.ipynb
+- [X] T045 [US4] Add Section 12.3: Execute Fine-tuning cell (ft_trainer.train()) in notebooks/GPT2_Recipe_Pretraining.ipynb
+- [X] T046 [US4] Add Section 12.4: Plot Fine-tuning Loss Curve cell (matplotlib plot of fine-tuning loss) in notebooks/GPT2_Recipe_Pretraining.ipynb
+- [X] T047 [US4] Add Section 12.5: Save Fine-tuned Model cell (save to gpt2_recipe_instruct_final/) in notebooks/GPT2_Recipe_Pretraining.ipynb
+- [X] T048 [US4] Add Section 13.1: Instruction-following Generation Function cell (generate_from_instruction) in notebooks/GPT2_Recipe_Pretraining.ipynb
+- [X] T049 [US4] Add Section 13.2: Example Generations cell (demonstrate with multiple instruction prompts) in notebooks/GPT2_Recipe_Pretraining.ipynb
+- [X] T050 [US4] Add Section 13.3: Interactive Chat Loop cell (while True input loop for user interaction) in notebooks/GPT2_Recipe_Pretraining.ipynb
+- [X] T051 [US4] Add Section 14.1: Download Fine-tuned Model cell (zip and download instruct model) in notebooks/GPT2_Recipe_Pretraining.ipynb
+- [X] T052 [US4] Add Section 14.2: Complete Pipeline Summary cell (display both phases summary) in notebooks/GPT2_Recipe_Pretraining.ipynb
+
+**Checkpoint**: User Story 4 complete - instruction fine-tuning implemented, interactive inference working
+
 ---
 
 ## Dependencies & Execution Order
@@ -129,6 +163,7 @@ graph TD
     P3 --> P4[Phase 4: US2 - Training]
     P4 --> P5[Phase 5: US3 - Inference]
     P5 --> P6[Phase 6: Polish]
+    P6 --> P7[Phase 7: US4 - Instruction Fine-tuning]
 ```
 
 - **Setup (Phase 1)**: No dependencies - creates notebook structure
@@ -136,15 +171,17 @@ graph TD
 - **US1 Tokenizer (Phase 3)**: Depends on Foundational - needs loaded data
 - **US2 Training (Phase 4)**: Depends on US1 - needs trained tokenizer
 - **US3 Inference (Phase 5)**: Depends on US2 - needs trained model
-- **Polish (Phase 6)**: Depends on US3 - all functionality complete
+- **Polish (Phase 6)**: Depends on US3 - all Phase 1 functionality complete
+- **US4 Instruction Fine-tuning (Phase 7)**: Depends on Phase 6 - needs saved pre-trained model
 
 ### User Story Dependencies
 
 - **User Story 1 (P1)**: Depends on Phase 2 completion (data must be loaded)
 - **User Story 2 (P2)**: Depends on User Story 1 completion (tokenizer required)
 - **User Story 3 (P3)**: Depends on User Story 2 completion (trained model required)
+- **User Story 4 (P4)**: Depends on User Story 3 completion (pre-trained model must be saved)
 
-> ⚠️ **Note**: User stories are sequential for this feature due to data pipeline dependencies (data → tokenizer → model → inference)
+> ⚠️ **Note**: User stories are sequential for this feature due to data pipeline dependencies (data → tokenizer → model → inference → instruction fine-tuning)
 
 ### Parallel Opportunities
 
@@ -170,7 +207,8 @@ Within phases, tasks marked [P] can run in parallel:
 2. Add User Story 1 → Demonstrate tokenizer → Deliverable: trained BPE tokenizer
 3. Add User Story 2 → Demonstrate training → Deliverable: trained GPT-2 model
 4. Add User Story 3 → Demonstrate inference → Deliverable: recipe generator
-5. Add Polish → Final notebook with documentation
+5. Add Phase 6 Polish → Final Phase 1 notebook with documentation
+6. Add User Story 4 → Demonstrate instruction-following → Deliverable: recipe assistant
 
 ### Execution Summary
 
@@ -182,15 +220,17 @@ Within phases, tasks marked [P] can run in parallel:
 | US2 Training | 10 | 0 | 10 | 10 |
 | US3 Inference | 3 | 0 | 3 | 3 |
 | Polish | 4 | 2 | 2 | 4 |
-| **Total** | **33** | **6** | **27** | **32** |
+| US4 Instruction Fine-tuning | 19 | 0 | 19 | 25 |
+| **Total** | **52** | **6** | **46** | **57** |
 
 ---
 
 ## Validation Checklist
 
-- [X] All 33 tasks follow checklist format: `- [ ] [TaskID] [P?] [Story?] Description with file path`
+- [X] All 52 tasks follow checklist format: `- [ ] [TaskID] [P?] [Story?] Description with file path`
 - [X] Each user story has clear independent demonstration criteria
 - [X] No test-related tasks (constitution compliance)
 - [X] All tasks reference exact file path (notebooks/GPT2_Recipe_Pretraining.ipynb)
 - [X] Dependencies documented in mermaid diagram
 - [X] MVP scope identified (User Story 1: Tokenizer training)
+- [X] Phase 2 (Instruction Fine-tuning) fully documented with tasks T034-T052

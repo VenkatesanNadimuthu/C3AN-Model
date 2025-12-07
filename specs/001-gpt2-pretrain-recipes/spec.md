@@ -32,8 +32,8 @@ A researcher configures a GPT-2 architecture from scratch (no pre-trained weight
 
 **Acceptance Scenarios**:
 
-1. **Given** a tokenized **structured** dataset and a randomly initialized GPT-2 model, **When** the user starts the Trainer for 7 epochs, **Then** training progresses using FP16 mixed precision, and loss decreases over epochs.
-2. **Given** A100 GPU memory (≈40 GB), **When** training with sequences up to n_positions (3000) tokens for 7 epochs, **Then** gradient accumulation keeps memory usage within limits and training completes without OOM errors.
+1. **Given** a tokenized **structured** dataset and a randomly initialized GPT-2 model, **When** the user starts the Trainer for 15 epochs with cosine learning rate scheduling, **Then** training progresses using FP16 mixed precision, and loss decreases over epochs.
+2. **Given** A100 GPU memory (≈40 GB), **When** training with sequences up to n_positions (1024) tokens for 15 epochs, **Then** gradient accumulation keeps memory usage within limits and training completes without OOM errors.
 
 ---
 
@@ -62,7 +62,7 @@ A user fine-tunes the pre-trained recipe model to follow natural language instru
 
 **Acceptance Scenarios**:
 
-1. **Given** a pre-trained GPT-2 recipe model and an Alpaca-style JSONL dataset with `instruction` and **structured** `response` fields (containing `**Title:**`, `**Ingredients:**`, `**Instructions:**`), **When** the user executes fine-tuning for 3 epochs with lower learning rate (1e-5), **Then** the model learns to generate **structured responses** following the `### Instruction: / ### Response:` template.
+1. **Given** a pre-trained GPT-2 recipe model and an Alpaca-style JSONL dataset with `instruction` and **structured** `response` fields (containing `**Title:**`, `**Ingredients:**`, `**Instructions:**`), **When** the user executes fine-tuning for 8 epochs with very low learning rate (5e-6) and cosine scheduling, **Then** the model learns to generate **structured responses** following the `### Instruction: / ### Response:` template.
 2. **Given** a fine-tuned model, **When** the user provides an instruction like "How do I make pasta carbonara?", **Then** the model generates a **structured recipe response** with labeled sections (`**Title:**`, `**Ingredients:**` as bullets, `**Instructions:**` as numbered steps) that addresses the specific request.
 3. **Given** an instruction dataset with validation errors, **When** the user loads the dataset, **Then** the system reports specific errors (missing fields, empty content, invalid JSON) and skips invalid entries. At least 90% of samples must be valid for training to proceed.
 
@@ -108,7 +108,7 @@ A user deploys the fine-tuned recipe model as an interactive web chatbot using S
 - **FR-005**: System MUST register special tokens [BOS], [EOS], [UNK], [PAD] in the tokenizer and save the tokenizer to disk.
 - **FR-006**: System MUST wrap the trained tokenizer in GPT2TokenizerFast for compatibility with Hugging Face models.
 - **FR-007**: System MUST implement a custom PyTorch Dataset class that tokenizes recipes, truncates/pads to a maximum length of 3000 tokens, and returns input_ids, attention_mask, and labels.
-- **FR-008**: System MUST initialize a GPT-2 Mini model from scratch using GPT2Config with 6 layers, 512 embedding dimension, and 8 attention heads (random weights, no pre-trained checkpoint).
+- **FR-008**: System MUST initialize a GPT-2 Small model from scratch using GPT2Config with 12 layers, 768 embedding dimension, and 12 attention heads (random weights, no pre-trained checkpoint, ~125M parameters).
 - **FR-009**: System MUST train the model using Hugging Face Trainer with FP16 (mixed precision) enabled.
 - **FR-010**: System MUST use gradient accumulation to allow effective batch sizes that fit within Colab GPU memory while handling 3000-token sequences.
 - **FR-011**: System MUST save model checkpoints to disk after every epoch (7 checkpoints total).
@@ -120,7 +120,7 @@ A user deploys the fine-tuned recipe model as an interactive web chatbot using S
 - **FR-014**: System MUST validate Alpaca-style JSONL instruction datasets, reporting errors for missing `instruction` or `response` fields, empty content, or invalid JSON.
 - **FR-015**: System MUST format instruction-response pairs using the template: `### Instruction:\n{instruction}\n\n### Response:\n{structured_response}[EOS]` where `{structured_response}` contains `**Title:**`, `**Ingredients:**` (bulleted), `**Instructions:**` (numbered), and optional `**Serving Suggestion:**`.
 - **FR-016**: System MUST implement an InstructionDataset class that formats and tokenizes instruction-response pairs on-the-fly.
-- **FR-017**: System MUST fine-tune using a lower learning rate (1e-5) than pre-training to preserve domain knowledge while learning instruction-following.
+- **FR-017**: System MUST fine-tune using a very low learning rate (5e-6) with cosine scheduling and gradient clipping to preserve domain knowledge while learning instruction-following.
 - **FR-018**: System MUST provide an instruction-following inference function that formats user input as an instruction prompt and extracts only the generated response.
 
 ### Functional Requirements (Phase 3: Chatbot Deployment)
@@ -136,7 +136,7 @@ A user deploys the fine-tuned recipe model as an interactive web chatbot using S
 
 - **Recipe**: A single training example on one line in **structured format**: `[BOS]` prefix, `**Title:**` field, optional metadata (`**Cuisine:**`, `**Diet:**`, `**Time:**`), `**Ingredients:**` as bulleted list (`-`), `**Instructions:**` as numbered steps (`1.`, `2.`, etc.), optional `**Serving Suggestion:**`, and `[EOS]` suffix. Internal newlines use `\n` markers.
 - **Tokenizer**: A Byte Pair Encoding (BPE) tokenizer trained on the structured recipe corpus; vocabulary size of 12,000 tokens; includes special tokens [BOS], [EOS], [UNK], [PAD]; learns Markdown formatting tokens (`**`, `-`, numbered list patterns).
-- **Model**: A GPT-2 Mini architecture (6 layers, 512 embedding dimension, 8 attention heads, **~50M parameters**) initialized with random weights; `n_positions=3000` for max sequence length.
+- **Model**: A GPT-2 Small architecture (12 layers, 768 embedding dimension, 12 attention heads, **~125M parameters**) initialized with random weights; `n_positions=1024` for max sequence length.
 - **Checkpoint**: Serialized model weights and tokenizer files stored on disk after each epoch (7 total), loadable for inference.
 - **Data Source**: Recipe text file uploaded directly to Colab runtime.
 - **Instruction Sample**: A single fine-tuning example in Alpaca-style JSONL format with `instruction` field (user request) and `response` field containing **structured recipe content** with `**Title:**`, `**Ingredients:**` (bulleted), `**Instructions:**` (numbered), and optional `**Serving Suggestion:**`; one JSON object per line.
@@ -150,14 +150,14 @@ A user deploys the fine-tuned recipe model as an interactive web chatbot using S
 ### Measurable Outcomes
 
 - **SC-001**: Tokenizer training completes in under 5 minutes on Colab and produces a vocabulary that encodes any recipe in the dataset without errors.
-- **SC-002**: Model training runs for 7 full epochs on 8,500 recipes without out-of-memory errors on a Colab A100 GPU.
+- **SC-002**: Model training runs for 15 full epochs on 8,500 recipes without out-of-memory errors on a Colab A100 GPU.
 - **SC-003**: Training loss decreases over the course of training (final loss < initial loss).
 - **SC-004**: Inference generates at least 50 new tokens of **structured** recipe-style text given the prompt "Ingredients: Chicken". Structured is defined as: output contains **distinct labeled sections** with `**Title:**`, `**Ingredients:**` (bulleted with `-`), and `**Instructions:**` (numbered with `1.`, `2.`, etc.) in correct Markdown formatting.
 - **SC-005**: End-to-end notebook execution (setup → tokenizer → dataset → training → inference) completes in under 2 hours on Colab A100 GPU with the 8,500-recipe dataset.
 
 ### Measurable Outcomes (Phase 2: Instruction Fine-tuning)
 
-- **SC-006**: Instruction fine-tuning runs for 3 full epochs without out-of-memory errors on Colab A100 GPU.
+- **SC-006**: Instruction fine-tuning runs for 8 full epochs without out-of-memory errors on Colab A100 GPU.
 - **SC-007**: Fine-tuning loss decreases over the course of training (final loss < initial loss).
 - **SC-008**: Given the instruction "Give me a recipe for chocolate cake", the model generates a **structured response** containing `**Title:**`, `**Ingredients:**` (bulleted with `-`), and `**Instructions:**` (numbered with `1.`, `2.`, etc.).
 - **SC-009**: The instruction-following inference function correctly extracts only the response portion (after `### Response:`), excluding the instruction prompt from output.

@@ -10,29 +10,32 @@
 - [x] HP002 - **min_frequency**: 2 [Spec §FR-004, plan.md §TOKENIZER_CONFIG] ✓ CONFIRMED
 - [x] HP003 - **special_tokens**: [BOS], [EOS], [UNK], [PAD] — 4 reserved tokens [Spec §FR-005] ✓ CONFIRMED
 
-## Model Architecture (GPT2Config)
+## Model Architecture (GPT2Config) — ENHANCED: GPT-2 Small
 
-- [x] HP004 - **n_positions**: Maximum sequence length — 3000 tokens [Spec §FR-007, Key Entities] ✓ CONFIRMED
-- [x] HP005 - **n_embd**: 512 embedding dimension (GPT-2 Mini) [Spec §FR-008] ✓ CONFIRMED
-- [x] HP006 - **n_layer**: 6 transformer layers (GPT-2 Mini) [Spec §FR-008] ✓ CONFIRMED
-- [x] HP007 - **n_head**: 8 attention heads (GPT-2 Mini, divides 512 evenly) [Spec §FR-008] ✓ CONFIRMED
+- [x] HP004 - **n_positions**: Maximum sequence length — 1024 tokens [Spec §FR-007, Key Entities] ✓ UPDATED
+- [x] HP005 - **n_embd**: 768 embedding dimension (GPT-2 Small) [Spec §FR-008] ✓ UPDATED
+- [x] HP006 - **n_layer**: 12 transformer layers (GPT-2 Small) [Spec §FR-008] ✓ UPDATED
+- [x] HP007 - **n_head**: 12 attention heads (GPT-2 Small, divides 768 evenly) [Spec §FR-008] ✓ UPDATED
 - [x] HP008 - **vocab_size**: 12,000 (must match tokenizer) [Spec §FR-008] ✓ CONFIRMED
 - [x] HP009 - **bos_token_id**: Set from tokenizer at runtime (ID: 2) [Spec §FR-008] ✓ CONFIRMED
 - [x] HP010 - **eos_token_id**: Set from tokenizer at runtime (ID: 3) [Spec §FR-008] ✓ CONFIRMED
 - [x] HP011 - **pad_token_id**: Set from tokenizer at runtime (ID: 0) [Spec §FR-008] ✓ CONFIRMED
 
-## Training Hyperparameters (TrainingArguments)
+## Training Hyperparameters (TrainingArguments) — ENHANCED
 
-- [x] HP012 - **num_train_epochs**: 7 epochs (optimized for 8.6K samples) [Spec §SC-002, User Story 2] ✓ CONFIRMED
+- [x] HP012 - **num_train_epochs**: 15 epochs (INCREASED for better convergence) [Spec §SC-002, User Story 2] ✓ UPDATED
 - [x] HP013 - **per_device_train_batch_size**: 4 (A100 40GB allows larger batches) [Spec §FR-010] ✓ CONFIRMED
-- [x] HP014 - **gradient_accumulation_steps**: 4 (effective batch size = 4 × 4 = 16) [Spec §FR-010] ✓ CONFIRMED
-- [x] HP015 - **learning_rate**: 5e-5 [Spec §FR-009, plan.md §TRAINING_CONFIG] ✓ CONFIRMED
+- [x] HP014 - **gradient_accumulation_steps**: 8 (effective batch size = 4 × 8 = 32) [Spec §FR-010] ✓ UPDATED
+- [x] HP015 - **learning_rate**: 3e-5 (LOWERED for stability) [Spec §FR-009, plan.md §TRAINING_CONFIG] ✓ UPDATED
 - [x] HP016 - **weight_decay**: 0.01 [Spec §FR-009, plan.md §TRAINING_CONFIG] ✓ CONFIRMED
-- [x] HP017 - **warmup_steps**: 500 [Spec §FR-009, plan.md §TRAINING_CONFIG] ✓ CONFIRMED
+- [x] HP017 - **warmup_steps**: 1500 (INCREASED for larger model) [Spec §FR-009, plan.md §TRAINING_CONFIG] ✓ UPDATED
 - [x] HP018 - **fp16**: True — mixed precision training [Spec §FR-009, SC-002] ✓ CONFIRMED
 - [x] HP019 - **logging_steps**: 100 [User Story 2, plan.md §TRAINING_CONFIG] ✓ CONFIRMED
 - [x] HP020 - **save_strategy**: "epoch" — save checkpoint every epoch [Spec §FR-011] ✓ CONFIRMED
-- [x] HP021 - **save_total_limit**: 7 checkpoints (one per epoch) [Spec §FR-011] ✓ CONFIRMED
+- [x] HP021 - **save_total_limit**: 5 checkpoints (keep last 5) [Spec §FR-011] ✓ UPDATED
+- [x] HP022a - **max_grad_norm**: 1.0 (NEW: gradient clipping) [plan.md §TRAINING_CONFIG] ✓ NEW
+- [x] HP022b - **lr_scheduler_type**: "cosine" (NEW: cosine annealing) [plan.md §TRAINING_CONFIG] ✓ NEW
+- [x] HP022c - **label_smoothing_factor**: 0.1 (NEW: reduce overfitting) [plan.md §TRAINING_CONFIG] ✓ NEW
 
 ## Inference Hyperparameters (model.generate)
 
@@ -48,15 +51,29 @@
 ## Memory Optimization
 
 - [x] HP030 - **gradient_checkpointing**: False (not needed with A100 40GB) [Spec §FR-010] ✓ CONFIRMED
-- [ ] HP031 - **dataloader_num_workers**: Number of data loading workers (suggested: 0–2 for Colab) [Spec §FR-007]
+- [x] HP031 - **dataloader_num_workers**: 2 (for Colab) [Spec §FR-007] ✓ CONFIRMED
+
+## Fine-tuning Hyperparameters (Phase 2) — ENHANCED
+
+- [x] HP032 - **num_train_epochs**: 8 epochs (INCREASED for instruction learning) [Spec §SC-006] ✓ UPDATED
+- [x] HP033 - **per_device_train_batch_size**: 2 (smaller for instruction data) [plan.md §FINETUNE_CONFIG] ✓ CONFIRMED
+- [x] HP034 - **gradient_accumulation_steps**: 16 (effective batch = 32) [plan.md §FINETUNE_CONFIG] ✓ UPDATED
+- [x] HP035 - **learning_rate**: 5e-6 (LOWERED: preserve pre-trained knowledge) [Spec §FR-017] ✓ UPDATED
+- [x] HP036 - **warmup_ratio**: 0.15 (INCREASED: 15% warmup) [plan.md §FINETUNE_CONFIG] ✓ UPDATED
+- [x] HP037 - **max_grad_norm**: 1.0 (gradient clipping) [plan.md §FINETUNE_CONFIG] ✓ NEW
+- [x] HP038 - **lr_scheduler_type**: "cosine" (cosine annealing) [plan.md §FINETUNE_CONFIG] ✓ NEW
+- [x] HP039 - **label_smoothing_factor**: 0.1 (reduce overfitting) [plan.md §FINETUNE_CONFIG] ✓ NEW
+- [x] HP040 - **max_seq_length**: 1024 (match model n_positions) [plan.md §FINETUNE_CONFIG] ✓ CONFIRMED
 
 ## Notes
 
-- ✓ CONFIRMED values are finalized from clarification session
-- Hyperparameters marked "suggested" require tuning based on actual GPU memory and training dynamics
-- Effective batch size = per_device_train_batch_size × gradient_accumulation_steps
-- For A100 GPU (≈40 GB), batch size of 4 with gradient_accumulation_steps=4 achieves effective batch size of 16
-- GPT-2 Mini (6 layers, 512 embed, 8 heads, ~50M params) selected for training efficiency
+- ✓ UPDATED values reflect enhanced GPT-2 Small configuration (December 2024)
+- ✓ CONFIRMED values remain unchanged from original spec
+- ✓ NEW values are additions to improve training quality
+- GPT-2 Small (12 layers, 768 embed, 12 heads, ~125M params) selected for coherent recipe generation
+- Effective batch size = per_device_train_batch_size × gradient_accumulation_steps = 32
+- Cosine learning rate scheduling for smoother convergence
+- Gradient clipping (max_grad_norm=1.0) for training stability
+- Label smoothing (0.1) to reduce overfitting on small dataset
 - Data file uploaded directly to Colab runtime (not Google Drive)
 - Recipe format: **Structured format** with [BOS]/[EOS] delimiters and explicit field markers (`**Title:**`, `**Ingredients:**` as bulleted list, `**Instructions:**` as numbered list)
-- Space-padding no longer required—structured format uses attention masking for variable-length sequences

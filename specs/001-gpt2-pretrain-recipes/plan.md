@@ -8,7 +8,7 @@
 
 ## Summary
 
-Build and pre-train a GPT-2 Mini language model (~50M parameters) from scratch on a domain-specific recipe dataset containing 8,500+ entries in **structured format** (with explicit `**Title:**`, `**Ingredients:**`, `**Instructions:**` field markers). The implementation trains a custom Byte Pair Encoding tokenizer, initializes the transformer architecture with random weights, and executes 7 epochs of causal language modeling using Hugging Face Trainer with FP16 mixed precision. The entire pipeline is optimized for Google Colab's A100 GPU (≈40 GB VRAM) and produces a checkpoint capable of generating **structured recipe text** with distinct labeled sections from prompts.
+Build and pre-train a GPT-2 Small language model (~125M parameters) from scratch on a domain-specific recipe dataset containing 8,500+ entries in **structured format** (with explicit `**Title:**`, `**Ingredients:**`, `**Instructions:**` field markers). The implementation trains a custom Byte Pair Encoding tokenizer, initializes the transformer architecture with random weights, and executes 15 epochs of causal language modeling using Hugging Face Trainer with FP16 mixed precision and cosine learning rate scheduling. The entire pipeline is optimized for Google Colab's A100 GPU (≈40 GB VRAM) and produces a checkpoint capable of generating **structured recipe text** with distinct labeled sections from prompts.
 
 ---
 
@@ -51,7 +51,7 @@ Build and pre-train a GPT-2 Mini language model (~50M parameters) from scratch o
 # SECTION 0: USER INPUTS (MODIFY THESE BEFORE RUNNING)
 # ============================================================================
 # 📁 Path to your recipe dataset file (upload to Colab runtime first)
-RECIPE_FILE_PATH = "Dataset/structured_recipes_pretrain.txt"  # INPUT REQUIRED: Structured format with field markers
+RECIPE_FILE_PATH = "/content/structured_recipes_pretrain.txt"  # INPUT REQUIRED: Structured format with field markers
 ```
 
 ---
@@ -82,43 +82,46 @@ TOKENIZER_CONFIG = {
 
 ```python
 # ============================================================================
-# SECTION 0.2: MODEL ARCHITECTURE HYPERPARAMETERS (GPT-2 Mini)
+# SECTION 0.2: MODEL ARCHITECTURE HYPERPARAMETERS (GPT-2 Small - ENHANCED)
 # ============================================================================
 MODEL_CONFIG = {
     "vocab_size": 12_000,           # CRITICAL: Must match TOKENIZER_CONFIG vocab_size exactly
-    "n_positions": 3000,            # Maximum sequence length (context window)
-    "n_embd": 512,                  # Embedding dimension
-    "n_layer": 6,                   # Number of transformer layers
-    "n_head": 8,                    # Number of attention heads (must divide n_embd)
+    "n_positions": 1024,            # Maximum sequence length (context window)
+    "n_embd": 768,                  # Embedding dimension (INCREASED from 512)
+    "n_layer": 12,                  # Number of transformer layers (INCREASED from 6)
+    "n_head": 12,                   # Number of attention heads (INCREASED from 8)
     "activation_function": "gelu_new",
     "resid_pdrop": 0.1,             # Residual dropout
     "embd_pdrop": 0.1,              # Embedding dropout
     "attn_pdrop": 0.1,              # Attention dropout
 }
-# Approximate parameter count: ~50M
+# Approximate parameter count: ~125M (2.5x larger than GPT-2 Mini)
 ```
 
 ### Section 0.3: Training Hyperparameters
 
 ```python
 # ============================================================================
-# SECTION 0.3: TRAINING HYPERPARAMETERS
+# SECTION 0.3: TRAINING HYPERPARAMETERS (ENHANCED)
 # ============================================================================
 TRAINING_CONFIG = {
-    "num_train_epochs": 7,                     # Total training epochs (optimized for 8.6K samples)
-    "per_device_train_batch_size": 4,          # Batch size per GPU (A100 40GB allows larger batches)
-    "gradient_accumulation_steps": 4,          # Effective batch size = 4 * 4 = 16
-    "learning_rate": 5e-5,                     # Peak learning rate
+    "num_train_epochs": 15,                    # INCREASED: 7 → 15 epochs for better convergence
+    "per_device_train_batch_size": 4,          # Batch size per GPU (A100 40GB)
+    "gradient_accumulation_steps": 8,          # INCREASED: Effective batch size = 4 * 8 = 32
+    "learning_rate": 3e-5,                     # LOWERED: 5e-5 → 3e-5 for stability
     "weight_decay": 0.01,                      # L2 regularization
-    "warmup_steps": 500,                       # Linear warmup steps
+    "warmup_steps": 1500,                      # INCREASED: 500 → 1500 for larger model
+    "max_grad_norm": 1.0,                      # NEW: Gradient clipping
+    "lr_scheduler_type": "cosine",             # NEW: Cosine annealing schedule
     "fp16": True,                              # Mixed precision training
     "logging_dir": "./logs",                   # TensorBoard logs directory
     "logging_steps": 100,                      # Log every N steps
     "save_strategy": "epoch",                  # Save checkpoint every epoch
-    "save_total_limit": 7,                     # Keep all 7 epoch checkpoints
+    "save_total_limit": 5,                     # Keep last 5 checkpoints
     "output_dir": "./gpt2-recipe-checkpoints", # Checkpoint directory
     "report_to": "none",                       # Disable wandb/tensorboard
     "seed": 42,                                # Random seed for reproducibility
+    "label_smoothing_factor": 0.1,             # NEW: Reduce overfitting
 }
 ```
 
@@ -143,15 +146,17 @@ INFERENCE_CONFIG = {
 
 ```python
 # ============================================================================
-# SECTION 0.5: FINE-TUNING HYPERPARAMETERS (PHASE 2)
+# SECTION 0.5: FINE-TUNING HYPERPARAMETERS (PHASE 2 - ENHANCED)
 # ============================================================================
 FINETUNE_CONFIG = {
-    "num_train_epochs": 3,                      # Fewer epochs for fine-tuning
+    "num_train_epochs": 8,                      # INCREASED: 3 → 8 epochs for instruction learning
     "per_device_train_batch_size": 2,           # Smaller batch for instruction data
-    "gradient_accumulation_steps": 8,           # Effective batch size = 2 * 8 = 16
-    "learning_rate": 1e-5,                      # Lower LR for fine-tuning (10x lower)
+    "gradient_accumulation_steps": 16,          # INCREASED: Effective batch size = 2 * 16 = 32
+    "learning_rate": 5e-6,                      # LOWERED: 1e-5 → 5e-6 (preserve knowledge)
     "weight_decay": 0.01,                       # L2 regularization
-    "warmup_ratio": 0.1,                        # 10% warmup (ratio-based)
+    "warmup_ratio": 0.15,                       # INCREASED: 10% → 15% warmup
+    "max_grad_norm": 1.0,                       # NEW: Gradient clipping
+    "lr_scheduler_type": "cosine",              # NEW: Cosine annealing
     "fp16": True,                               # Mixed precision training
     "logging_dir": "./logs_finetune",           # Separate logs for fine-tuning
     "logging_steps": 50,                        # More frequent logging
@@ -161,7 +166,8 @@ FINETUNE_CONFIG = {
     "report_to": "none",                        # Disable wandb/tensorboard
     "dataloader_num_workers": 2,                # Data loading workers
     "seed": 42,                                 # Random seed
-    "max_seq_length": 1024,                     # Shorter sequences for instructions
+    "max_seq_length": 1024,                     # Match model n_positions
+    "label_smoothing_factor": 0.1,              # NEW: Reduce overfitting
 }
 ```
 
@@ -449,11 +455,11 @@ outputs/                              # Generated at runtime (gitignored)
 | Metric | Target | Measurement |
 |--------|--------|-------------|
 | Tokenizer training time | <5 minutes | Cell execution time |
-| Phase 1 training completion | 7 epochs, no OOM | Trainer logs |
+| Phase 1 training completion | 15 epochs, no OOM | Trainer logs |
 | Phase 1 loss trend | final_loss < initial_loss | Loss curve visualization |
 | Pre-training generation quality | Structured output with labeled sections | Manual inspection for `**Title:**`, `**Ingredients:**`, `**Instructions:**` |
 | Phase 1 runtime | <2 hours | Notebook execution time |
-| Phase 2 fine-tuning completion | 3 epochs, no OOM | Trainer logs |
+| Phase 2 fine-tuning completion | 8 epochs, no OOM | Trainer logs |
 | Phase 2 loss trend | final_loss < initial_loss | Loss curve visualization |
 | Instruction-following quality | Structured recipe with bullets/numbered steps | Manual inspection |
 | Total pipeline runtime | <3 hours | End-to-end execution time |

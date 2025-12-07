@@ -16,8 +16,8 @@
 ## Path Conventions
 
 - **Notebook**: `notebooks/GPT2_Recipe_Pretraining.ipynb` (Google Colab notebook - requires Colab Pro for A100 GPU)
-- **Pre-training Data**: `Dataset/structured_recipes_pretrain.txt` (structured format with field markers)
-- **Fine-tuning Data**: `Dataset/structured_recipes_finetune.jsonl` (Alpaca-style with structured responses)
+- **Pre-training Data**: `/content/structured_recipes_pretrain.txt` (Colab runtime - structured format with field markers)
+- **Fine-tuning Data**: `/content/structured_recipes_finetune.jsonl` (Colab runtime - Alpaca-style with structured responses)
 - **Outputs**: `outputs/tokenizer/`, `outputs/gpt2-recipe-checkpoints/` (Colab runtime storage, regenerated each session)
 - **Platform**: Google Colab Pro with A100 GPU (40GB VRAM)
 

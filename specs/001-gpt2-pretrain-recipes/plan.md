@@ -85,7 +85,7 @@ TOKENIZER_CONFIG = {
 # SECTION 0.2: MODEL ARCHITECTURE HYPERPARAMETERS (GPT-2 Mini)
 # ============================================================================
 MODEL_CONFIG = {
-    "vocab_size": 12_000,           # Must match tokenizer vocab_size
+    "vocab_size": 12_000,           # CRITICAL: Must match TOKENIZER_CONFIG vocab_size exactly
     "n_positions": 3000,            # Maximum sequence length (context window)
     "n_embd": 512,                  # Embedding dimension
     "n_layer": 6,                   # Number of transformer layers
@@ -208,7 +208,8 @@ GPT2_Recipe_Pretraining.ipynb
 ├── SECTION 2: DATA LOADING
 │   ├── 2.1 Load Recipe Text File
 │   ├── 2.2 Data Exploration & Statistics
-│   └── 2.3 Visualize Recipe Length Distribution
+│   ├── 2.3 Visualize Recipe Length Distribution
+│   └── 2.4 Validate Structured Format
 │
 ├── SECTION 3: TOKENIZER TRAINING
 │   ├── 3.1 Train Byte Pair Encoding (BPE) Tokenizer
@@ -420,7 +421,7 @@ outputs/                              # Generated at runtime (gitignored)
 | 14.1 | Download fine-tuned model artifacts | ✅ Colab-compatible |
 | 14.2 | Display complete pipeline summary | ✅ Informative |
 
-### Phase 12: Chatbot Deployment (app.py, colab_deploy.py)
+### Phase 8: Chatbot Deployment (app.py, colab_deploy.py)
 
 | Step | Description | Constitution Compliance |
 |------|-------------|------------------------|

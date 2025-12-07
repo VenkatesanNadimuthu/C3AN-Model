@@ -64,7 +64,7 @@ A user fine-tunes the pre-trained recipe model to follow natural language instru
 
 1. **Given** a pre-trained GPT-2 recipe model and an Alpaca-style JSONL dataset with `instruction` and **structured** `response` fields (containing `**Title:**`, `**Ingredients:**`, `**Instructions:**`), **When** the user executes fine-tuning for 3 epochs with lower learning rate (1e-5), **Then** the model learns to generate **structured responses** following the `### Instruction: / ### Response:` template.
 2. **Given** a fine-tuned model, **When** the user provides an instruction like "How do I make pasta carbonara?", **Then** the model generates a **structured recipe response** with labeled sections (`**Title:**`, `**Ingredients:**` as bullets, `**Instructions:**` as numbered steps) that addresses the specific request.
-3. **Given** an instruction dataset with validation errors, **When** the user loads the dataset, **Then** the system reports specific errors (missing fields, empty content, invalid JSON) and skips invalid entries.
+3. **Given** an instruction dataset with validation errors, **When** the user loads the dataset, **Then** the system reports specific errors (missing fields, empty content, invalid JSON) and skips invalid entries. At least 90% of samples must be valid for training to proceed.
 
 ---
 

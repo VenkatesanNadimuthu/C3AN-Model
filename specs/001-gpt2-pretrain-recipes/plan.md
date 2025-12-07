@@ -165,6 +165,25 @@ FINETUNE_CONFIG = {
 }
 ```
 
+### Section 0.6: Chatbot Configuration (Phase 3)
+
+```python
+# ============================================================================
+# SECTION 0.6: CHATBOT CONFIGURATION (PHASE 3)
+# ============================================================================
+CHATBOT_CONFIG = {
+    "model_path": "./gpt2-recipe-instruct",     # Path to fine-tuned model
+    "default_temperature": 0.7,                 # Default sampling temperature
+    "default_max_length": 300,                  # Default max generation tokens
+    "temperature_range": (0.1, 1.0),            # UI slider range
+    "max_length_range": (100, 1000),            # UI slider range
+    "streamlit_port": 8501,                     # Default Streamlit port
+    "page_title": "🍳 Recipe Chef AI",           # App title
+    "page_icon": "🍳",                           # Browser tab icon
+}
+```
+```
+
 ---
 
 ## Notebook Structure
@@ -278,20 +297,25 @@ specs/001-gpt2-pretrain-recipes/
 
 ```text
 notebooks/
-└── GPT2_Recipe_Pretraining.ipynb    # Main Colab notebook
+└── GPT2_Recipe_Pretraining.ipynb    # Main Colab notebook (Phases 1-2)
+
+app.py                               # Streamlit chatbot application (Phase 3)
+colab_deploy.py                      # Colab deployment commands (Phase 3)
+requirements.txt                     # Python dependencies for deployment
 
 outputs/                              # Generated at runtime (gitignored)
 ├── tokenizer/                        # Trained BPE tokenizer files
 │   ├── vocab.json
 │   ├── merges.txt
 │   └── tokenizer_config.json
-└── gpt2-recipe-checkpoints/          # Model checkpoints (epoch 1-10)
-    ├── checkpoint-epoch-1/
-    ├── checkpoint-epoch-2/
-    └── ...
+├── gpt2-recipe-checkpoints/          # Pre-trained model checkpoints
+│   ├── checkpoint-epoch-1/
+│   └── ...
+└── gpt2-recipe-instruct/             # Fine-tuned model (Phase 2)
+    └── pytorch_model.bin
 ```
 
-**Structure Decision**: Single Jupyter Notebook for Colab execution. All code is contained in one `.ipynb` file with clear section headers. Outputs (tokenizer, checkpoints) are generated at runtime and stored in `outputs/` directory.
+**Structure Decision**: Jupyter Notebook for training (Phases 1-2); standalone Python files for deployment (Phase 3). Outputs are generated at runtime and stored in `outputs/` directory.
 
 ---
 
@@ -395,6 +419,17 @@ outputs/                              # Generated at runtime (gitignored)
 | 14.1 | Download fine-tuned model artifacts | ✅ Colab-compatible |
 | 14.2 | Display complete pipeline summary | ✅ Informative |
 
+### Phase 12: Chatbot Deployment (app.py, colab_deploy.py)
+
+| Step | Description | Constitution Compliance |
+|------|-------------|------------------------|
+| 12.1 | Create Streamlit app with professional UI | ✅ Standalone Python file |
+| 12.2 | Implement model loading with @st.cache_resource | ✅ Memory efficient |
+| 12.3 | Add sidebar generation controls (temperature, length) | ✅ User configurable |
+| 12.4 | Implement chat interface with st.chat_message | ✅ Clean UX |
+| 12.5 | Create Colab deployment script with ngrok tunnel | ✅ Accessible from web |
+| 12.6 | Create requirements.txt for dependencies | ✅ Reproducible environment |
+
 ---
 
 ## Complexity Tracking
@@ -420,6 +455,10 @@ outputs/                              # Generated at runtime (gitignored)
 | Phase 2 loss trend | final_loss < initial_loss | Loss curve visualization |
 | Instruction-following quality | Relevant recipe for instruction | Manual inspection |
 | Total pipeline runtime | <3 hours | End-to-end execution time |
+| Chatbot model load time | <30 seconds | Streamlit first request |
+| Ngrok tunnel setup | <10 seconds | Deployment script execution |
+| Chat response latency | <10 seconds for 300 tokens | Manual testing on GPU |
+| Session persistence | 5+ messages retained | Chat history inspection |
 
 ---
 
@@ -441,4 +480,5 @@ outputs/                              # Generated at runtime (gitignored)
 3. **Execute Phase 1 on Colab**: Upload recipe dataset and run pre-training (Sections 0-8)
 4. **Prepare instruction dataset**: Create Alpaca-style JSONL with instruction-response pairs
 5. **Execute Phase 2 on Colab**: Run instruction fine-tuning (Sections 9-14)
-6. **Validate success criteria**: Confirm all SC-001 through SC-009 metrics
+6. **Deploy chatbot**: Run `colab_deploy.py` to launch Streamlit app with ngrok tunnel
+7. **Validate success criteria**: Confirm all SC-001 through SC-013 metrics

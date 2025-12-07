@@ -152,6 +152,25 @@
 
 ---
 
+## Phase 8: User Story 5 - Chatbot Deployment (Priority: P5)
+
+**Goal**: Deploy the fine-tuned recipe model as an interactive Streamlit chatbot accessible via ngrok tunneling from Google Colab
+
+**Independent Demonstration**: Run Colab deployment commands; access ngrok public URL; type recipe request; verify professional chat interface displays responses
+
+### Implementation for User Story 5
+
+- [X] T053 [US5] Create app.py with Streamlit chatbot application (st.chat_message, sidebar controls, @st.cache_resource model loading)
+- [X] T054 [US5] Implement chat history persistence in app.py using st.session_state
+- [X] T055 [US5] Add sidebar generation controls (temperature slider 0.1-1.0, max length slider 100-1000) in app.py
+- [X] T056 [US5] Create colab_deploy.py with ngrok tunnel setup and Streamlit launch commands
+- [X] T057 [US5] Create requirements.txt with deployment dependencies (torch, transformers, streamlit, pyngrok)
+- [X] T058 [US5] Add GPU/CUDA detection in app.py for automatic device selection
+
+**Checkpoint**: User Story 5 complete - chatbot deployed with professional UI and public URL access
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -164,6 +183,7 @@ graph TD
     P4 --> P5[Phase 5: US3 - Inference]
     P5 --> P6[Phase 6: Polish]
     P6 --> P7[Phase 7: US4 - Instruction Fine-tuning]
+    P7 --> P8[Phase 8: US5 - Chatbot Deployment]
 ```
 
 - **Setup (Phase 1)**: No dependencies - creates notebook structure
@@ -173,6 +193,7 @@ graph TD
 - **US3 Inference (Phase 5)**: Depends on US2 - needs trained model
 - **Polish (Phase 6)**: Depends on US3 - all Phase 1 functionality complete
 - **US4 Instruction Fine-tuning (Phase 7)**: Depends on Phase 6 - needs saved pre-trained model
+- **US5 Chatbot Deployment (Phase 8)**: Depends on Phase 7 - needs fine-tuned model
 
 ### User Story Dependencies
 
@@ -180,8 +201,9 @@ graph TD
 - **User Story 2 (P2)**: Depends on User Story 1 completion (tokenizer required)
 - **User Story 3 (P3)**: Depends on User Story 2 completion (trained model required)
 - **User Story 4 (P4)**: Depends on User Story 3 completion (pre-trained model must be saved)
+- **User Story 5 (P5)**: Depends on User Story 4 completion (fine-tuned model required for deployment)
 
-> ⚠️ **Note**: User stories are sequential for this feature due to data pipeline dependencies (data → tokenizer → model → inference → instruction fine-tuning)
+> ⚠️ **Note**: User stories are sequential for this feature due to data pipeline dependencies (data → tokenizer → model → inference → instruction fine-tuning → chatbot deployment)
 
 ### Parallel Opportunities
 
@@ -209,11 +231,12 @@ Within phases, tasks marked [P] can run in parallel:
 4. Add User Story 3 → Demonstrate inference → Deliverable: recipe generator
 5. Add Phase 6 Polish → Final Phase 1 notebook with documentation
 6. Add User Story 4 → Demonstrate instruction-following → Deliverable: recipe assistant
+7. Add User Story 5 → Demonstrate chatbot deployment → Deliverable: web-accessible recipe chatbot
 
 ### Execution Summary
 
-| Phase | Tasks | Parallel | Sequential | Estimated Cells |
-|-------|-------|----------|------------|-----------------|
+| Phase | Tasks | Parallel | Sequential | Estimated Cells/Files |
+|-------|-------|----------|------------|----------------------|
 | Setup | 6 | 4 | 2 | 5 |
 | Foundational | 6 | 0 | 6 | 6 |
 | US1 Tokenizer | 4 | 0 | 4 | 4 |
@@ -221,16 +244,18 @@ Within phases, tasks marked [P] can run in parallel:
 | US3 Inference | 3 | 0 | 3 | 3 |
 | Polish | 4 | 2 | 2 | 4 |
 | US4 Instruction Fine-tuning | 19 | 0 | 19 | 25 |
-| **Total** | **52** | **6** | **46** | **57** |
+| US5 Chatbot Deployment | 6 | 0 | 6 | 3 files |
+| **Total** | **58** | **6** | **52** | **57 cells + 3 files** |
 
 ---
 
 ## Validation Checklist
 
-- [X] All 52 tasks follow checklist format: `- [ ] [TaskID] [P?] [Story?] Description with file path`
+- [X] All 58 tasks follow checklist format: `- [ ] [TaskID] [P?] [Story?] Description with file path`
 - [X] Each user story has clear independent demonstration criteria
 - [X] No test-related tasks (constitution compliance)
-- [X] All tasks reference exact file path (notebooks/GPT2_Recipe_Pretraining.ipynb)
+- [X] All tasks reference exact file path (notebooks/GPT2_Recipe_Pretraining.ipynb or standalone files)
 - [X] Dependencies documented in mermaid diagram
 - [X] MVP scope identified (User Story 1: Tokenizer training)
 - [X] Phase 2 (Instruction Fine-tuning) fully documented with tasks T034-T052
+- [X] Phase 3 (Chatbot Deployment) fully documented with tasks T053-T058

@@ -68,6 +68,23 @@ A user fine-tunes the pre-trained recipe model to follow natural language instru
 
 ---
 
+### User Story 5 - Deploy Interactive Chatbot Application (Priority: P5)
+
+A user deploys the fine-tuned recipe model as an interactive web chatbot using Streamlit, accessible via a public URL from Google Colab using ngrok tunneling.
+
+**Why this priority**: After training and fine-tuning, deployment makes the model accessible to end users. A polished chatbot interface demonstrates practical value and enables sharing.
+
+**Independent Demonstration**: Run Colab deployment cells; access the ngrok public URL; interact with the chatbot by typing recipe requests; verify responses appear in chat bubble format.
+
+**Acceptance Scenarios**:
+
+1. **Given** a fine-tuned model saved to disk, **When** the user runs the Streamlit app, **Then** the model loads once via caching and responds to user messages in under 5 seconds.
+2. **Given** the Streamlit app running on Colab, **When** the user configures ngrok with an auth token, **Then** a public HTTPS URL is generated that external users can access.
+3. **Given** the chatbot interface, **When** the user adjusts temperature and max length sliders, **Then** subsequent generations reflect the updated parameters.
+4. **Given** a conversation in progress, **When** the user sends multiple messages, **Then** all messages remain visible in the chat history (session state persists).
+
+---
+
 ### Edge Cases
 
 - What happens when a recipe row exceeds 3000 characters? Rows longer than the max sequence length are truncated during tokenization; padding is applied to shorter rows.
@@ -76,6 +93,9 @@ A user fine-tunes the pre-trained recipe model to follow natural language instru
 - How does the system handle space-padding in input data? The tokenizer treats spaces as regular tokens; attention masks ensure padded positions do not influence loss.
 - What if the instruction JSONL file has malformed entries? The validation function reports line numbers and error types; only valid samples are used for training.
 - What if the pre-trained model checkpoint is missing? The system raises FileNotFoundError with instructions to complete Phase 1 first.
+- What if ngrok auth token is invalid or missing? The tunnel creation fails with a clear error message; user is directed to https://dashboard.ngrok.com to obtain a valid token.
+- What if the Streamlit app crashes due to memory? The model is loaded with `@st.cache_resource` to prevent repeated loading; GPU memory is released between sessions.
+- What if multiple users access the chatbot simultaneously? Each user session maintains independent chat history via `st.session_state`; model inference is serialized.
 
 ## Requirements *(mandatory)*
 
@@ -103,6 +123,15 @@ A user fine-tunes the pre-trained recipe model to follow natural language instru
 - **FR-017**: System MUST fine-tune using a lower learning rate (1e-5) than pre-training to preserve domain knowledge while learning instruction-following.
 - **FR-018**: System MUST provide an instruction-following inference function that formats user input as an instruction prompt and extracts only the generated response.
 
+### Functional Requirements (Phase 3: Chatbot Deployment)
+
+- **FR-019**: System MUST provide a Streamlit application (`app.py`) with a professional chat interface using `st.chat_message` for user/assistant message bubbles.
+- **FR-020**: System MUST use `@st.cache_resource` to load the model and tokenizer exactly once, preventing Colab memory issues on repeated interactions.
+- **FR-021**: System MUST provide sidebar controls for generation parameters (temperature slider 0.1-1.0, max length slider 100-1000) that affect subsequent generations.
+- **FR-022**: System MUST maintain chat history in `st.session_state` so conversations persist across user interactions within a session.
+- **FR-023**: System MUST provide Colab deployment commands (`colab_deploy.py`) that install dependencies, configure ngrok tunneling, and launch Streamlit with a public URL.
+- **FR-024**: System MUST automatically detect and use GPU (CUDA) if available, falling back to CPU for inference.
+
 ### Key Entities
 
 - **Recipe**: A single training example on one line comprising Recipe Name, Ingredients, Instructions concatenated with [BOS] prefix and [EOS] suffix; max 3000 characters; space-padded.
@@ -112,6 +141,9 @@ A user fine-tunes the pre-trained recipe model to follow natural language instru
 - **Data Source**: Recipe text file uploaded directly to Colab runtime.
 - **Instruction Sample**: A single fine-tuning example in Alpaca-style JSONL format with `instruction` field (user request) and `response` field (recipe content); one JSON object per line.
 - **Fine-tuned Model**: The instruction-aligned model saved after Phase 2, capable of following user instructions to generate recipes.
+- **Streamlit App**: A Python web application (`app.py`) providing chat interface, sidebar configuration, and session-based conversation history.
+- **Ngrok Tunnel**: A secure HTTPS tunnel exposing the local Streamlit server (port 8501) to a public URL for external access from Colab.
+- **Chat Session**: A user interaction session maintaining message history, generation parameters, and model state via Streamlit session_state.
 
 ## Success Criteria *(mandatory)*
 
@@ -129,3 +161,10 @@ A user fine-tunes the pre-trained recipe model to follow natural language instru
 - **SC-007**: Fine-tuning loss decreases over the course of training (final loss < initial loss).
 - **SC-008**: Given the instruction "Give me a recipe for chocolate cake", the model generates a response containing at least one ingredient AND at least one cooking step.
 - **SC-009**: The instruction-following inference function correctly extracts only the response portion (after `### Response:`), excluding the instruction prompt from output.
+
+### Measurable Outcomes (Phase 3: Chatbot Deployment)
+
+- **SC-010**: Streamlit app loads the fine-tuned model in under 30 seconds on first request; subsequent requests use cached model with no reload.
+- **SC-011**: Ngrok tunnel is established within 10 seconds of running deployment commands, providing a valid HTTPS public URL.
+- **SC-012**: Chat response latency is under 10 seconds for a typical recipe generation request (300 tokens) on GPU.
+- **SC-013**: Chat history persists correctly—sending 5 consecutive messages results in all 5 user messages and 5 assistant responses visible in the interface.

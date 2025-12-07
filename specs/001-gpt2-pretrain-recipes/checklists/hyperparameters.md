@@ -6,7 +6,7 @@
 
 ## Tokenizer Hyperparameters
 
-- [x] HP001 - **vocab_size**: 30,000 tokens [Spec §FR-004] ✓ CONFIRMED
+- [x] HP001 - **vocab_size**: 12,000 tokens (optimized for recipe corpus) [Spec §FR-004] ✓ CONFIRMED
 - [x] HP002 - **min_frequency**: 2 [Spec §FR-004, plan.md §TOKENIZER_CONFIG] ✓ CONFIRMED
 - [x] HP003 - **special_tokens**: [BOS], [EOS], [UNK], [PAD] — 4 reserved tokens [Spec §FR-005] ✓ CONFIRMED
 
@@ -16,14 +16,14 @@
 - [x] HP005 - **n_embd**: 512 embedding dimension (GPT-2 Mini) [Spec §FR-008] ✓ CONFIRMED
 - [x] HP006 - **n_layer**: 6 transformer layers (GPT-2 Mini) [Spec §FR-008] ✓ CONFIRMED
 - [x] HP007 - **n_head**: 8 attention heads (GPT-2 Mini, divides 512 evenly) [Spec §FR-008] ✓ CONFIRMED
-- [x] HP008 - **vocab_size**: 30,000 (must match tokenizer) [Spec §FR-008] ✓ CONFIRMED
+- [x] HP008 - **vocab_size**: 12,000 (must match tokenizer) [Spec §FR-008] ✓ CONFIRMED
 - [x] HP009 - **bos_token_id**: Set from tokenizer at runtime (ID: 2) [Spec §FR-008] ✓ CONFIRMED
 - [x] HP010 - **eos_token_id**: Set from tokenizer at runtime (ID: 3) [Spec §FR-008] ✓ CONFIRMED
 - [x] HP011 - **pad_token_id**: Set from tokenizer at runtime (ID: 0) [Spec §FR-008] ✓ CONFIRMED
 
 ## Training Hyperparameters (TrainingArguments)
 
-- [x] HP012 - **num_train_epochs**: 10 epochs [Spec §SC-002, User Story 2] ✓ CONFIRMED
+- [x] HP012 - **num_train_epochs**: 7 epochs (optimized for 8.6K samples) [Spec §SC-002, User Story 2] ✓ CONFIRMED
 - [x] HP013 - **per_device_train_batch_size**: 4 (A100 40GB allows larger batches) [Spec §FR-010] ✓ CONFIRMED
 - [x] HP014 - **gradient_accumulation_steps**: 4 (effective batch size = 4 × 4 = 16) [Spec §FR-010] ✓ CONFIRMED
 - [x] HP015 - **learning_rate**: 5e-5 [Spec §FR-009, plan.md §TRAINING_CONFIG] ✓ CONFIRMED
@@ -32,7 +32,7 @@
 - [x] HP018 - **fp16**: True — mixed precision training [Spec §FR-009, SC-002] ✓ CONFIRMED
 - [x] HP019 - **logging_steps**: 100 [User Story 2, plan.md §TRAINING_CONFIG] ✓ CONFIRMED
 - [x] HP020 - **save_strategy**: "epoch" — save checkpoint every epoch [Spec §FR-011] ✓ CONFIRMED
-- [x] HP021 - **save_total_limit**: 10 checkpoints (one per epoch) [Spec §FR-011] ✓ CONFIRMED
+- [x] HP021 - **save_total_limit**: 7 checkpoints (one per epoch) [Spec §FR-011] ✓ CONFIRMED
 
 ## Inference Hyperparameters (model.generate)
 
@@ -58,4 +58,5 @@
 - For A100 GPU (≈40 GB), batch size of 4 with gradient_accumulation_steps=4 achieves effective batch size of 16
 - GPT-2 Mini (6 layers, 512 embed, 8 heads, ~50M params) selected for training efficiency
 - Data file uploaded directly to Colab runtime (not Google Drive)
-- Recipe format: one complete recipe per line with [BOS]/[EOS] markers
+- Recipe format: **Structured format** with [BOS]/[EOS] delimiters and explicit field markers (`**Title:**`, `**Ingredients:**` as bulleted list, `**Instructions:**` as numbered list)
+- Space-padding no longer required—structured format uses attention masking for variable-length sequences

@@ -130,6 +130,78 @@ def load_model_and_tokenizer(model_path: str = "./model_finetuned"):
 # ============================================================================
 # GENERATION FUNCTION
 # ============================================================================
+def format_structured_response(response: str) -> str:
+    """
+    Format the structured response for better display in chat.
+    Converts markdown-style formatting to clean display format.
+    
+    Expected input format (from structured fine-tuning):
+    **Title:** Recipe Name
+    **Ingredients:**
+    - item1
+    - item2
+    **Instructions:**
+    1. step1
+    2. step2
+    **Serving Suggestion:** ...
+    """
+    import re
+    
+    # Clean up any artifacts
+    response = response.strip()
+    
+    # Remove any trailing [EOS] tokens
+    response = re.sub(r'\[EOS\]\s*$', '', response)
+    
+    # If response doesn't have structured markers, return as-is
+    if '**Title:**' not in response and '**Ingredients:**' not in response:
+        return response
+    
+    # The response is already in markdown format, just clean it up
+    # Replace ** markers with proper formatting for display
+    formatted = response
+    
+    # Ensure proper newlines around sections
+    formatted = re.sub(r'\*\*Title:\*\*', '\n🍽️ **Recipe:**', formatted)
+    formatted = re.sub(r'\*\*Ingredients:\*\*', '\n\n📝 **Ingredients:**', formatted)
+    formatted = re.sub(r'\*\*Instructions:\*\*', '\n\n👨‍🍳 **Instructions:**', formatted)
+    formatted = re.sub(r'\*\*Serving Suggestion:\*\*', '\n\n🍴 **Serving Suggestion:**', formatted)
+    formatted = re.sub(r'\*\*Tip:\*\*', '\n\n💡 **Tip:**', formatted)
+    formatted = re.sub(r'\*\*Cuisine:\*\*', '🌍 **Cuisine:**', formatted)
+    
+    return formatted.strip()
+
+
+def validate_structured_response(response: str) -> dict:
+    """
+    Validate that the generated response follows structured format.
+    
+    Args:
+        response: Generated recipe text (before formatting)
+        
+    Returns:
+        dict with validation results
+    """
+    result = {
+        "is_structured": False,
+        "has_title": "**Title:**" in response or "🍽️ **Recipe:**" in response,
+        "has_ingredients": "**Ingredients:**" in response or "📝 **Ingredients:**" in response,
+        "has_instructions": "**Instructions:**" in response or "👨‍🍳 **Instructions:**" in response,
+        "has_serving": "**Serving Suggestion:**" in response or "🍴 **Serving Suggestion:**" in response,
+        "has_bullets": "- " in response,
+        "has_numbers": any(f"{i}." in response for i in range(1, 10)),
+    }
+    
+    # Fully structured if has all three required markers
+    result["is_structured"] = (
+        result["has_title"] and 
+        result["has_ingredients"] and 
+        result["has_instructions"]
+    )
+    
+    return result
+
+
 def generate_recipe(
     instruction: str,
     model,
@@ -139,7 +211,7 @@ def generate_recipe(
     max_new_tokens: int = 300,
     top_k: int = 50,
     top_p: float = 0.92,
-) -> tuple[str, str]:
+) -> tuple[str, str, dict]:
     """
     Generate a recipe from a user instruction.
     
@@ -154,20 +226,32 @@ def generate_recipe(
         top_p: Nucleus sampling parameter
         
     Returns:
-        Tuple of (formatted_prompt, generated_response)
+        Tuple of (formatted_prompt, generated_response, validation_result)
+    
+    Note: When trained on structured datasets, the model outputs:
+        **Title:** Recipe Name
+        **Ingredients:** (bulleted list)
+        **Instructions:** (numbered steps)
+        **Serving Suggestion:** ...
     """
-    # Format as instruction prompt
+    # Format as instruction prompt (for fine-tuned model)
     prompt = f"### Instruction:\n{instruction}\n\n### Response:\n"
     
     # Tokenize
-    inputs = tokenizer(prompt, return_tensors="pt").to(device)
+    inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=512).to(device)
     prompt_length = inputs["input_ids"].shape[1]
+    
+    # Clear CUDA cache if using GPU to prevent memory issues
+    if device.type == "cuda":
+        torch.cuda.empty_cache()
     
     # Generate
     with torch.no_grad():
         outputs = model.generate(
-            **inputs,
+            input_ids=inputs["input_ids"],
+            attention_mask=inputs["attention_mask"],
             max_new_tokens=max_new_tokens,
+            min_new_tokens=10,  # Force at least some output
             temperature=temperature,
             top_k=top_k,
             top_p=top_p,
@@ -178,11 +262,26 @@ def generate_recipe(
             no_repeat_ngram_size=3,
         )
     
-    # Decode only the generated part
+    # Decode only the generated part (after prompt)
     generated_ids = outputs[0][prompt_length:]
-    response = tokenizer.decode(generated_ids, skip_special_tokens=True)
+    raw_response = tokenizer.decode(generated_ids, skip_special_tokens=True)
     
-    return prompt, response.strip()
+    # Clean up response - remove any repeated instruction pattern
+    if "### Instruction:" in raw_response:
+        raw_response = raw_response.split("### Instruction:")[0]
+    
+    # Validate structured format BEFORE formatting
+    validation = validate_structured_response(raw_response)
+    
+    # If response is empty, return a helpful message
+    if not raw_response.strip():
+        response = "(Model generated empty response. Try rephrasing your request or adjusting temperature.)"
+        validation = {"is_structured": False, "has_title": False, "has_ingredients": False, "has_instructions": False}
+    else:
+        # Format structured response for better display
+        response = format_structured_response(raw_response)
+    
+    return prompt, response.strip(), validation
 
 
 # ============================================================================
@@ -327,7 +426,11 @@ if prompt := st.chat_input("What recipe would you like today?", key="chat_input"
         with st.chat_message("assistant", avatar="🍳"):
             with st.spinner("👨‍🍳 Crafting your recipe..."):
                 try:
-                    raw_prompt, response = generate_recipe(
+                    # Force garbage collection before generation
+                    import gc
+                    gc.collect()
+                    
+                    raw_prompt, response, validation = generate_recipe(
                         instruction=prompt,
                         model=model,
                         tokenizer=tokenizer,
@@ -339,21 +442,45 @@ if prompt := st.chat_input("What recipe would you like today?", key="chat_input"
                     # Display response
                     st.markdown(response)
                     
+                    # Show structured format validation status
+                    if validation["is_structured"]:
+                        st.caption("✅ Structured format: Title, Ingredients, Instructions")
+                    else:
+                        markers = []
+                        if validation.get("has_title"): markers.append("Title")
+                        if validation.get("has_ingredients"): markers.append("Ingredients")
+                        if validation.get("has_instructions"): markers.append("Instructions")
+                        if markers:
+                            st.caption(f"⚠️ Partial format: {', '.join(markers)}")
+                        else:
+                            st.caption("ℹ️ Freeform response (no structured markers)")
+                    
                     # Show raw prompt if debug is enabled
                     if show_raw_prompt:
                         with st.expander("🔍 Debug: Raw Prompt"):
                             st.code(raw_prompt, language="text")
+                        with st.expander("🔍 Debug: Validation Details"):
+                            st.json(validation)
                     
                     # Add assistant message to chat history
                     st.session_state.messages.append({
                         "role": "assistant",
                         "content": response,
-                        "raw_prompt": raw_prompt
+                        "raw_prompt": raw_prompt,
+                        "validation": validation
                     })
                     
+                    # Post-generation cleanup
+                    gc.collect()
+                    
                 except Exception as e:
+                    import traceback
+                    error_trace = traceback.format_exc()
                     error_msg = f"❌ Error generating recipe: {str(e)}"
                     st.error(error_msg)
+                    if show_raw_prompt:
+                        with st.expander("🔍 Debug: Error Traceback"):
+                            st.code(error_trace, language="text")
                     st.session_state.messages.append({
                         "role": "assistant",
                         "content": error_msg

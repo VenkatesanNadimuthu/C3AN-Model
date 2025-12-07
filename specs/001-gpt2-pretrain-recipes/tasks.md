@@ -16,6 +16,8 @@
 ## Path Conventions
 
 - **Notebook**: `notebooks/GPT2_Recipe_Pretraining.ipynb` (Google Colab notebook - requires Colab Pro for A100 GPU)
+- **Pre-training Data**: `Dataset/structured_recipes_pretrain.txt` (structured format with field markers)
+- **Fine-tuning Data**: `Dataset/structured_recipes_finetune.jsonl` (Alpaca-style with structured responses)
 - **Outputs**: `outputs/tokenizer/`, `outputs/gpt2-recipe-checkpoints/` (Colab runtime storage, regenerated each session)
 - **Platform**: Google Colab Pro with A100 GPU (40GB VRAM)
 
@@ -46,6 +48,7 @@
 - [X] T010 Add Section 2.1: Load Recipe Text File cell (read from RECIPE_FILE_PATH) in notebooks/GPT2_Recipe_Pretraining.ipynb
 - [X] T011 Add Section 2.2: Data Exploration & Statistics cell (count recipes, length stats) in notebooks/GPT2_Recipe_Pretraining.ipynb
 - [X] T012 Add Section 2.3: Visualize Recipe Length Distribution cell (seaborn histogram) in notebooks/GPT2_Recipe_Pretraining.ipynb
+- [X] T059 [NEW] Add Section 2.4: Validate Structured Format cell (verify **Title:**, **Ingredients:**, **Instructions:** markers present in samples) in notebooks/GPT2_Recipe_Pretraining.ipynb
 
 **Checkpoint**: Foundation ready - user story implementation can now begin
 
@@ -59,7 +62,7 @@
 
 ### Implementation for User Story 1
 
-- [X] T013 [US1] Add Section 3.1: Train BPE Tokenizer cell (BpeTrainer with vocab_size=30000, special_tokens) in notebooks/GPT2_Recipe_Pretraining.ipynb
+- [X] T013 [US1] Add Section 3.1: Train BPE Tokenizer cell (BpeTrainer with vocab_size=12000, special_tokens) in notebooks/GPT2_Recipe_Pretraining.ipynb
 - [X] T014 [US1] Add Section 3.2: Save Tokenizer to Disk cell (save vocab.json, merges.txt to outputs/tokenizer/) in notebooks/GPT2_Recipe_Pretraining.ipynb
 - [X] T015 [US1] Add Section 3.3: Wrap in GPT2TokenizerFast cell (load saved tokenizer, set pad_token, bos_token, eos_token) in notebooks/GPT2_Recipe_Pretraining.ipynb
 - [X] T016 [US1] Add Section 3.4: Tokenizer Validation Demo cell (encode sample recipe, decode back, print token IDs for special tokens) in notebooks/GPT2_Recipe_Pretraining.ipynb
@@ -70,24 +73,24 @@
 
 ## Phase 4: User Story 2 - Pre-train GPT-2 Model (Priority: P2)
 
-**Goal**: Initialize GPT-2 Mini from random weights and train for 10 epochs with FP16 on Google Colab Pro A100 GPU (40GB VRAM)
+**Goal**: Initialize GPT-2 Mini from random weights and train for 7 epochs with FP16 on Google Colab Pro A100 GPU (40GB VRAM)
 
-**Independent Demonstration**: Execute training loop; observe loss decreasing in Trainer logs; verify 10 checkpoints saved to outputs/gpt2-recipe-checkpoints/
+**Independent Demonstration**: Execute training loop; observe loss decreasing in Trainer logs; verify 7 checkpoints saved to outputs/gpt2-recipe-checkpoints/
 
 ### Implementation for User Story 2
 
 - [X] T017 [US2] Add Section 4.1: RecipeDataset Class Definition cell (torch.utils.data.Dataset with __init__, __len__, __getitem__) in notebooks/GPT2_Recipe_Pretraining.ipynb
-- [X] T018 [US2] Add Section 4.2: Tokenize and Prepare Dataset cell (apply tokenizer with truncation/padding to 3000 tokens) in notebooks/GPT2_Recipe_Pretraining.ipynb
+- [X] T018 [US2] Add Section 4.2: Tokenize and Prepare Dataset cell (tokenize structured recipes with truncation/padding to n_positions tokens) in notebooks/GPT2_Recipe_Pretraining.ipynb
 - [X] T019 [US2] Add Section 4.3: Create DataCollator cell (DataCollatorForLanguageModeling with mlm=False) in notebooks/GPT2_Recipe_Pretraining.ipynb
-- [X] T020 [US2] Add Section 5.1: Configure GPT2Config cell (6 layers, 512 embed, 8 heads, vocab_size=30000) in notebooks/GPT2_Recipe_Pretraining.ipynb
+- [X] T020 [US2] Add Section 5.1: Configure GPT2Config cell (6 layers, 512 embed, 8 heads, vocab_size=12000) in notebooks/GPT2_Recipe_Pretraining.ipynb
 - [X] T021 [US2] Add Section 5.2: Initialize GPT2LMHeadModel cell (from config, random weights) in notebooks/GPT2_Recipe_Pretraining.ipynb
 - [X] T022 [US2] Add Section 5.3: Model Summary & Parameter Count cell (print model architecture, count params) in notebooks/GPT2_Recipe_Pretraining.ipynb
-- [X] T023 [US2] Add Section 6.1: Configure TrainingArguments cell (fp16=True, batch_size=4, grad_accum=4, epochs=10, save_strategy='epoch', optimized for Colab Pro A100) in notebooks/GPT2_Recipe_Pretraining.ipynb
+- [X] T023 [US2] Add Section 6.1: Configure TrainingArguments cell (fp16=True, batch_size=4, grad_accum=4, epochs=7, save_strategy='epoch', optimized for Colab Pro A100) in notebooks/GPT2_Recipe_Pretraining.ipynb
 - [X] T024 [US2] Add Section 6.2: Initialize Trainer cell (model, train_dataset, args, data_collator) in notebooks/GPT2_Recipe_Pretraining.ipynb
 - [X] T025 [US2] Add Section 6.3: Execute Training Loop cell (trainer.train()) in notebooks/GPT2_Recipe_Pretraining.ipynb
 - [X] T026 [US2] Add Section 6.4: Visualize Training Loss Curve cell (matplotlib/seaborn plot of loss vs steps) in notebooks/GPT2_Recipe_Pretraining.ipynb
 
-**Checkpoint**: User Story 2 complete - model trained for 10 epochs, checkpoints saved, loss curve visualized
+**Checkpoint**: User Story 2 complete - model trained for 7 epochs, checkpoints saved, loss curve visualized
 
 ---
 
@@ -238,20 +241,20 @@ Within phases, tasks marked [P] can run in parallel:
 | Phase | Tasks | Parallel | Sequential | Estimated Cells/Files |
 |-------|-------|----------|------------|----------------------|
 | Setup | 6 | 4 | 2 | 5 |
-| Foundational | 6 | 0 | 6 | 6 |
+| Foundational | 7 | 0 | 7 | 7 |
 | US1 Tokenizer | 4 | 0 | 4 | 4 |
 | US2 Training | 10 | 0 | 10 | 10 |
 | US3 Inference | 3 | 0 | 3 | 3 |
 | Polish | 4 | 2 | 2 | 4 |
 | US4 Instruction Fine-tuning | 19 | 0 | 19 | 25 |
 | US5 Chatbot Deployment | 6 | 0 | 6 | 3 files |
-| **Total** | **58** | **6** | **52** | **57 cells + 3 files** |
+| **Total** | **59** | **6** | **53** | **58 cells + 3 files** |
 
 ---
 
 ## Validation Checklist
 
-- [X] All 58 tasks follow checklist format: `- [ ] [TaskID] [P?] [Story?] Description with file path`
+- [X] All 59 tasks follow checklist format: `- [ ] [TaskID] [P?] [Story?] Description with file path`
 - [X] Each user story has clear independent demonstration criteria
 - [X] No test-related tasks (constitution compliance)
 - [X] All tasks reference exact file path (notebooks/GPT2_Recipe_Pretraining.ipynb or standalone files)
@@ -259,3 +262,4 @@ Within phases, tasks marked [P] can run in parallel:
 - [X] MVP scope identified (User Story 1: Tokenizer training)
 - [X] Phase 2 (Instruction Fine-tuning) fully documented with tasks T034-T052
 - [X] Phase 3 (Chatbot Deployment) fully documented with tasks T053-T058
+- [X] Structured data format validation task added (T059)

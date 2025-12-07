@@ -8,7 +8,7 @@
 
 ## Summary
 
-Build and pre-train a GPT-2 Mini language model (~50M parameters) from scratch on a domain-specific recipe dataset containing 8,500+ entries. The implementation trains a custom Byte Pair Encoding tokenizer, initializes the transformer architecture with random weights, and executes 10 epochs of causal language modeling using Hugging Face Trainer with FP16 mixed precision. The entire pipeline is optimized for Google Colab's A100 GPU (≈40 GB VRAM) and produces a checkpoint capable of generating coherent recipe text from prompts.
+Build and pre-train a GPT-2 Mini language model (~50M parameters) from scratch on a domain-specific recipe dataset containing 8,500+ entries in **structured format** (with explicit `**Title:**`, `**Ingredients:**`, `**Instructions:**` field markers). The implementation trains a custom Byte Pair Encoding tokenizer, initializes the transformer architecture with random weights, and executes 7 epochs of causal language modeling using Hugging Face Trainer with FP16 mixed precision. The entire pipeline is optimized for Google Colab's A100 GPU (≈40 GB VRAM) and produces a checkpoint capable of generating **structured recipe text** with distinct labeled sections from prompts.
 
 ---
 
@@ -20,9 +20,9 @@ Build and pre-train a GPT-2 Mini language model (~50M parameters) from scratch o
 **Testing**: Not permitted by constitution (no automated or manual test tasks)  
 **Target Platform**: Google Colab with NVIDIA A100 GPU  
 **Project Type**: Single Jupyter Notebook (Colab-native)  
-**Performance Goals**: Complete 10 epochs on 8,500 recipes in <2 hours; generate coherent 50+ token continuations  
+**Performance Goals**: Complete 7 epochs on 8,500 recipes in <2 hours; generate coherent 50+ token continuations  
 **Constraints**: ≈40 GB GPU memory; 3000-token max sequence length; FP16 required  
-**Scale/Scope**: ~50M parameter model; 30K vocabulary; 8,500 training samples
+**Scale/Scope**: ~50M parameter model; 12K vocabulary; 8,500 training samples
 
 ---
 
@@ -51,7 +51,7 @@ Build and pre-train a GPT-2 Mini language model (~50M parameters) from scratch o
 # SECTION 0: USER INPUTS (MODIFY THESE BEFORE RUNNING)
 # ============================================================================
 # 📁 Path to your recipe dataset file (upload to Colab runtime first)
-RECIPE_FILE_PATH = "recipes.txt"  # INPUT REQUIRED: Set your file path here
+RECIPE_FILE_PATH = "Dataset/structured_recipes_pretrain.txt"  # INPUT REQUIRED: Structured format with field markers
 ```
 
 ---
@@ -67,7 +67,7 @@ RECIPE_FILE_PATH = "recipes.txt"  # INPUT REQUIRED: Set your file path here
 # SECTION 0.1: TOKENIZER HYPERPARAMETERS
 # ============================================================================
 TOKENIZER_CONFIG = {
-    "vocab_size": 30_000,           # Target vocabulary size for BPE
+    "vocab_size": 12_000,           # Target vocabulary size for BPE (optimized for recipe corpus)
     "min_frequency": 2,             # Minimum token frequency to include
     "special_tokens": [
         "[PAD]",                    # Padding token (ID: 0)
@@ -85,7 +85,7 @@ TOKENIZER_CONFIG = {
 # SECTION 0.2: MODEL ARCHITECTURE HYPERPARAMETERS (GPT-2 Mini)
 # ============================================================================
 MODEL_CONFIG = {
-    "vocab_size": 30_000,           # Must match tokenizer vocab_size
+    "vocab_size": 12_000,           # Must match tokenizer vocab_size
     "n_positions": 3000,            # Maximum sequence length (context window)
     "n_embd": 512,                  # Embedding dimension
     "n_layer": 6,                   # Number of transformer layers
@@ -105,7 +105,7 @@ MODEL_CONFIG = {
 # SECTION 0.3: TRAINING HYPERPARAMETERS
 # ============================================================================
 TRAINING_CONFIG = {
-    "num_train_epochs": 10,                    # Total training epochs
+    "num_train_epochs": 7,                     # Total training epochs (optimized for 8.6K samples)
     "per_device_train_batch_size": 4,          # Batch size per GPU (A100 40GB allows larger batches)
     "gradient_accumulation_steps": 4,          # Effective batch size = 4 * 4 = 16
     "learning_rate": 5e-5,                     # Peak learning rate
@@ -115,7 +115,7 @@ TRAINING_CONFIG = {
     "logging_dir": "./logs",                   # TensorBoard logs directory
     "logging_steps": 100,                      # Log every N steps
     "save_strategy": "epoch",                  # Save checkpoint every epoch
-    "save_total_limit": 10,                    # Keep all 10 epoch checkpoints
+    "save_total_limit": 7,                     # Keep all 7 epoch checkpoints
     "output_dir": "./gpt2-recipe-checkpoints", # Checkpoint directory
     "report_to": "none",                       # Disable wandb/tensorboard
     "seed": 42,                                # Random seed for reproducibility
@@ -172,7 +172,7 @@ FINETUNE_CONFIG = {
 # SECTION 0.6: CHATBOT CONFIGURATION (PHASE 3)
 # ============================================================================
 CHATBOT_CONFIG = {
-    "model_path": "./gpt2-recipe-instruct",     # Path to fine-tuned model
+    "model_path": "./model_finetuned",             # Path to fine-tuned model
     "default_temperature": 0.7,                 # Default sampling temperature
     "default_max_length": 300,                  # Default max generation tokens
     "temperature_range": (0.1, 1.0),            # UI slider range
@@ -331,6 +331,7 @@ outputs/                              # Generated at runtime (gitignored)
 | 2.1 | Load recipe text file from user-provided path | ✅ Clear input handling |
 | 2.2 | Compute dataset statistics (count, lengths) | ✅ Informative exploration |
 | 2.3 | Plot recipe length histogram with seaborn | ✅ Mandated viz stack |
+| 2.4 | Validate structured format markers present | ✅ Data quality gate |
 
 ### Phase 2: Tokenizer (Section 3)
 
@@ -346,7 +347,7 @@ outputs/                              # Generated at runtime (gitignored)
 | Step | Description | Constitution Compliance |
 |------|-------------|------------------------|
 | 4.1 | Define RecipeDataset(torch.utils.data.Dataset) | ✅ PyTorch native |
-| 4.2 | Tokenize, truncate/pad to 3000 tokens | ✅ Spec FR-007 |
+| 4.2 | Tokenize structured recipes, truncate/pad to n_positions tokens | ✅ Spec FR-007 |
 | 4.3 | Create DataCollatorForLanguageModeling | ✅ HF utility |
 | 5.1 | Configure GPT2Config with hyperparameters | ✅ Centralized config |
 | 5.2 | Initialize GPT2LMHeadModel (random weights) | ✅ No pretrained |
@@ -358,7 +359,7 @@ outputs/                              # Generated at runtime (gitignored)
 |------|-------------|------------------------|
 | 6.1 | Configure TrainingArguments (FP16, grad accum) | ✅ Memory optimization |
 | 6.2 | Initialize Trainer with model, dataset, args | ✅ HF Trainer |
-| 6.3 | Execute trainer.train() for 10 epochs | ✅ Spec SC-002 |
+| 6.3 | Execute trainer.train() for 7 epochs | ✅ Spec SC-002 |
 | 6.4 | Plot loss curve with matplotlib/seaborn | ✅ Mandated viz |
 
 ### Phase 5: Inference (Section 7)
@@ -447,13 +448,13 @@ outputs/                              # Generated at runtime (gitignored)
 | Metric | Target | Measurement |
 |--------|--------|-------------|
 | Tokenizer training time | <5 minutes | Cell execution time |
-| Phase 1 training completion | 10 epochs, no OOM | Trainer logs |
+| Phase 1 training completion | 7 epochs, no OOM | Trainer logs |
 | Phase 1 loss trend | final_loss < initial_loss | Loss curve visualization |
-| Pre-training generation quality | 50+ coherent tokens | Manual inspection |
+| Pre-training generation quality | Structured output with labeled sections | Manual inspection for `**Title:**`, `**Ingredients:**`, `**Instructions:**` |
 | Phase 1 runtime | <2 hours | Notebook execution time |
 | Phase 2 fine-tuning completion | 3 epochs, no OOM | Trainer logs |
 | Phase 2 loss trend | final_loss < initial_loss | Loss curve visualization |
-| Instruction-following quality | Relevant recipe for instruction | Manual inspection |
+| Instruction-following quality | Structured recipe with bullets/numbered steps | Manual inspection |
 | Total pipeline runtime | <3 hours | End-to-end execution time |
 | Chatbot model load time | <30 seconds | Streamlit first request |
 | Ngrok tunnel setup | <10 seconds | Deployment script execution |
@@ -468,8 +469,8 @@ outputs/                              # Generated at runtime (gitignored)
 |------|------------|------------|
 | OOM on A100 GPU | Low | A100 40GB provides ample headroom; reduce batch size if needed |
 | Colab disconnection | High | Save checkpoints every epoch; resume from latest |
-| Poor generation quality | Medium | Ensure 10 epochs complete; tune temperature/top_p |
-| Tokenizer OOV issues | Low | 30K vocab with min_frequency=2 covers domain |
+| Poor generation quality | Medium | Ensure 7 epochs complete; tune temperature/top_p |
+| Tokenizer OOV issues | Low | 12K vocab with min_frequency=2 covers domain |
 
 ---
 
@@ -477,8 +478,7 @@ outputs/                              # Generated at runtime (gitignored)
 
 1. **Create tasks.md**: Run `/speckit.tasks` to generate implementation task list
 2. **Create notebook**: Implement sections 0-14 following this plan
-3. **Execute Phase 1 on Colab**: Upload recipe dataset and run pre-training (Sections 0-8)
-4. **Prepare instruction dataset**: Create Alpaca-style JSONL with instruction-response pairs
-5. **Execute Phase 2 on Colab**: Run instruction fine-tuning (Sections 9-14)
-6. **Deploy chatbot**: Run `colab_deploy.py` to launch Streamlit app with ngrok tunnel
-7. **Validate success criteria**: Confirm all SC-001 through SC-013 metrics
+3. **Execute Phase 1 on Colab**: Upload `Dataset/structured_recipes_pretrain.txt` and run pre-training (Sections 0-8)
+4. **Execute Phase 2 on Colab**: Upload `Dataset/structured_recipes_finetune.jsonl` and run instruction fine-tuning (Sections 9-14)
+5. **Deploy chatbot**: Run `colab_deploy.py` to launch Streamlit app with ngrok tunnel
+6. **Validate success criteria**: Confirm all SC-001 through SC-013 metrics, especially **structured output format**

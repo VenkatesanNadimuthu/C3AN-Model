@@ -56,10 +56,78 @@ st.markdown("""
         background-color: #f8f9fa;
     }
     
-    /* Chat message styling */
+    /* Chat message styling - Enhanced for structured responses */
     .stChatMessage {
         padding: 1rem;
         border-radius: 10px;
+    }
+    
+    /* Recipe card styling - ChatGPT/Perplexity style */
+    .recipe-response {
+        background: linear-gradient(to bottom right, #fafafa, #f5f5f5);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin: 0.5rem 0;
+        border: 1px solid #e8e8e8;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    
+    .recipe-response h3 {
+        color: #1a1a1a;
+        font-size: 1.3rem;
+        margin-bottom: 0.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #667eea;
+    }
+    
+    .recipe-section {
+        margin: 1rem 0;
+        padding: 0.75rem;
+        background: white;
+        border-radius: 8px;
+        border-left: 3px solid #667eea;
+    }
+    
+    .recipe-section h4 {
+        color: #667eea;
+        font-size: 1rem;
+        font-weight: 600;
+        margin: 0 0 0.5rem 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .recipe-section ul {
+        margin: 0.5rem 0 0 1rem;
+        padding: 0;
+    }
+    
+    .recipe-section li {
+        margin: 0.3rem 0;
+        line-height: 1.5;
+        color: #333;
+    }
+    
+    .recipe-section ol {
+        margin: 0.5rem 0 0 1rem;
+        padding: 0;
+    }
+    
+    .recipe-section ol li {
+        margin: 0.5rem 0;
+        padding-left: 0.25rem;
+    }
+    
+    /* Tip/Serving suggestion styling */
+    .recipe-tip {
+        background: linear-gradient(135deg, #fff9e6, #fff5d6);
+        border-left: 3px solid #f0ad4e;
+        margin-top: 1rem;
+    }
+    
+    .recipe-tip h4 {
+        color: #c08b30;
     }
     
     /* Button styling */
@@ -130,20 +198,16 @@ def load_model_and_tokenizer(model_path: str = "./model_finetuned"):
 # ============================================================================
 # GENERATION FUNCTION
 # ============================================================================
-def format_structured_response(response: str) -> str:
+def format_structured_response(response: str) -> tuple[str, bool]:
     """
-    Format the structured response for better display in chat.
-    Converts markdown-style formatting to clean display format.
+    Format the structured response for ChatGPT/Perplexity style display.
+    Converts markdown-style formatting to rich HTML cards.
     
-    Expected input format (from structured fine-tuning):
-    **Title:** Recipe Name
-    **Ingredients:**
-    - item1
-    - item2
-    **Instructions:**
-    1. step1
-    2. step2
-    **Serving Suggestion:** ...
+    Handles both clean markers (**Title:**) and spaced markers (** Title :**)
+    which can occur due to tokenization artifacts.
+    
+    Returns:
+        Tuple of (formatted_html, is_structured)
     """
     import re
     
@@ -153,23 +217,104 @@ def format_structured_response(response: str) -> str:
     # Remove any trailing [EOS] tokens
     response = re.sub(r'\[EOS\]\s*$', '', response)
     
-    # If response doesn't have structured markers, return as-is
+    # Normalize spaced markers: "** Title :**" -> "**Title:**"
+    # This handles tokenization artifacts from the model
+    response = re.sub(r'\*\*\s*Title\s*:\s*\*\*', '**Title:**', response)
+    response = re.sub(r'\*\*\s*Ingredients\s*:\s*\*\*', '**Ingredients:**', response)
+    response = re.sub(r'\*\*\s*Instructions\s*:\s*\*\*', '**Instructions:**', response)
+    response = re.sub(r'\*\*\s*Serving\s*Suggestion\s*:\s*\*\*', '**Serving Suggestion:**', response)
+    response = re.sub(r'\*\*\s*Tip\s*:\s*\*\*', '**Tip:**', response)
+    response = re.sub(r'\*\*\s*Cuisine\s*:\s*\*\*', '**Cuisine:**', response)
+    response = re.sub(r'\*\*\s*Diet\s*:\s*\*\*', '**Diet:**', response)
+    response = re.sub(r'\*\*\s*Time\s*:\s*\*\*', '**Time:**', response)
+    
+    # Also handle "Inst ruction" -> "Instruction" type spacing issues
+    response = re.sub(r'Inst\s*ruction', 'Instruction', response)
+    response = re.sub(r'Res\s*pon\s*se', 'Response', response)
+    response = re.sub(r'Ste\s*p', 'Step', response)
+    
+    # If response doesn't have structured markers, return as plain markdown
     if '**Title:**' not in response and '**Ingredients:**' not in response:
-        return response
+        return response, False
     
-    # The response is already in markdown format, just clean it up
-    # Replace ** markers with proper formatting for display
-    formatted = response
+    # Parse structured sections
+    html_parts = ['<div class="recipe-response">']
     
-    # Ensure proper newlines around sections
-    formatted = re.sub(r'\*\*Title:\*\*', '\n🍽️ **Recipe:**', formatted)
-    formatted = re.sub(r'\*\*Ingredients:\*\*', '\n\n📝 **Ingredients:**', formatted)
-    formatted = re.sub(r'\*\*Instructions:\*\*', '\n\n👨‍🍳 **Instructions:**', formatted)
-    formatted = re.sub(r'\*\*Serving Suggestion:\*\*', '\n\n🍴 **Serving Suggestion:**', formatted)
-    formatted = re.sub(r'\*\*Tip:\*\*', '\n\n💡 **Tip:**', formatted)
-    formatted = re.sub(r'\*\*Cuisine:\*\*', '🌍 **Cuisine:**', formatted)
+    # Extract Title
+    title_match = re.search(r'\*\*Title:\*\*\s*([^\n*]+)', response)
+    if title_match:
+        title = title_match.group(1).strip()
+        html_parts.append(f'<h3>🍽️ {title}</h3>')
     
-    return formatted.strip()
+    # Extract Cuisine/Diet/Time (optional metadata)
+    for meta, emoji in [('Cuisine', '🌍'), ('Diet', '🥗'), ('Time', '⏱️')]:
+        meta_match = re.search(rf'\*\*{meta}:\*\*\s*([^\n*]+)', response)
+        if meta_match:
+            html_parts.append(f'<p><strong>{emoji} {meta}:</strong> {meta_match.group(1).strip()}</p>')
+    
+    # Extract Ingredients section
+    ingredients_match = re.search(
+        r'\*\*Ingredients:\*\*\s*\n?([\s\S]*?)(?=\*\*Instructions:|\*\*Serving|\*\*Tip:|$)',
+        response
+    )
+    if ingredients_match:
+        ingredients_text = ingredients_match.group(1).strip()
+        # Parse bullet points (handle both "- item" and "- item")
+        items = re.findall(r'-\s*(.+?)(?=\s*-\s|\s*\*\*|$)', ingredients_text)
+        if items:
+            html_parts.append('<div class="recipe-section">')
+            html_parts.append('<h4>📝 Ingredients</h4>')
+            html_parts.append('<ul>')
+            for item in items:
+                clean_item = item.strip()
+                if clean_item and len(clean_item) > 1:
+                    html_parts.append(f'<li>{clean_item}</li>')
+            html_parts.append('</ul>')
+            html_parts.append('</div>')
+    
+    # Extract Instructions section
+    instructions_match = re.search(
+        r'\*\*Instructions:\*\*\s*\n?([\s\S]*?)(?=\*\*Serving|\*\*Tip:|$)',
+        response
+    )
+    if instructions_match:
+        instructions_text = instructions_match.group(1).strip()
+        # Parse numbered steps (handle "1 ." and "1." formats)
+        steps = re.findall(r'\d+\s*\.\s*(.+?)(?=\d+\s*\.|$)', instructions_text, re.DOTALL)
+        if steps:
+            html_parts.append('<div class="recipe-section">')
+            html_parts.append('<h4>👨‍🍳 Instructions</h4>')
+            html_parts.append('<ol>')
+            for step in steps:
+                clean_step = step.strip()
+                if clean_step and len(clean_step) > 1:
+                    html_parts.append(f'<li>{clean_step}</li>')
+            html_parts.append('</ol>')
+            html_parts.append('</div>')
+    
+    # Extract Serving Suggestion (optional)
+    serving_match = re.search(r'\*\*Serving Suggestion:\*\*\s*([^\n*]+)', response)
+    if serving_match:
+        html_parts.append('<div class="recipe-section recipe-tip">')
+        html_parts.append('<h4>🍴 Serving Suggestion</h4>')
+        html_parts.append(f'<p>{serving_match.group(1).strip()}</p>')
+        html_parts.append('</div>')
+    
+    # Extract Tip (optional)
+    tip_match = re.search(r'\*\*Tip:\*\*\s*([^\n*]+)', response)
+    if tip_match:
+        html_parts.append('<div class="recipe-section recipe-tip">')
+        html_parts.append('<h4>💡 Chef\'s Tip</h4>')
+        html_parts.append(f'<p>{tip_match.group(1).strip()}</p>')
+        html_parts.append('</div>')
+    
+    html_parts.append('</div>')
+    
+    # Only return HTML if we actually parsed structured content
+    if len(html_parts) > 2:  # More than just opening/closing div
+        return '\n'.join(html_parts), True
+    else:
+        return response, False
 
 
 def validate_structured_response(response: str) -> dict:
@@ -211,7 +356,7 @@ def generate_recipe(
     max_new_tokens: int = 300,
     top_k: int = 50,
     top_p: float = 0.92,
-) -> tuple[str, str, dict]:
+) -> tuple[str, str, dict, bool]:
     """
     Generate a recipe from a user instruction.
     
@@ -226,7 +371,7 @@ def generate_recipe(
         top_p: Nucleus sampling parameter
         
     Returns:
-        Tuple of (formatted_prompt, generated_response, validation_result)
+        Tuple of (formatted_prompt, generated_response, validation_result, is_html)
     
     Note: When trained on structured datasets, the model outputs:
         **Title:** Recipe Name
@@ -277,11 +422,12 @@ def generate_recipe(
     if not raw_response.strip():
         response = "(Model generated empty response. Try rephrasing your request or adjusting temperature.)"
         validation = {"is_structured": False, "has_title": False, "has_ingredients": False, "has_instructions": False}
+        is_html = False
     else:
-        # Format structured response for better display
-        response = format_structured_response(raw_response)
+        # Format structured response for ChatGPT/Perplexity style display
+        response, is_html = format_structured_response(raw_response)
     
-    return prompt, response.strip(), validation
+    return prompt, response.strip(), validation, is_html
 
 
 # ============================================================================
@@ -401,7 +547,11 @@ if "messages" not in st.session_state:
 # Display chat history
 for message in st.session_state.messages:
     with st.chat_message(message["role"], avatar="👤" if message["role"] == "user" else "🍳"):
-        st.markdown(message["content"])
+        # Render HTML for structured responses, markdown for plain text
+        if message.get("is_html", False):
+            st.markdown(message["content"], unsafe_allow_html=True)
+        else:
+            st.markdown(message["content"])
         
         # Show raw prompt if enabled and it's an assistant message with debug info
         if show_raw_prompt and message["role"] == "assistant" and "raw_prompt" in message:
@@ -430,7 +580,7 @@ if prompt := st.chat_input("What recipe would you like today?", key="chat_input"
                     import gc
                     gc.collect()
                     
-                    raw_prompt, response, validation = generate_recipe(
+                    raw_prompt, response, validation, is_html = generate_recipe(
                         instruction=prompt,
                         model=model,
                         tokenizer=tokenizer,
@@ -439,8 +589,11 @@ if prompt := st.chat_input("What recipe would you like today?", key="chat_input"
                         max_new_tokens=max_length,
                     )
                     
-                    # Display response
-                    st.markdown(response)
+                    # Display response - use HTML for structured, markdown for plain
+                    if is_html:
+                        st.markdown(response, unsafe_allow_html=True)
+                    else:
+                        st.markdown(response)
                     
                     # Show structured format validation status
                     if validation["is_structured"]:
@@ -467,7 +620,8 @@ if prompt := st.chat_input("What recipe would you like today?", key="chat_input"
                         "role": "assistant",
                         "content": response,
                         "raw_prompt": raw_prompt,
-                        "validation": validation
+                        "validation": validation,
+                        "is_html": is_html
                     })
                     
                     # Post-generation cleanup

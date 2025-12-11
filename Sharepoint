@@ -1,0 +1,4 @@
+document.querySelectorAll('a[href*="RecycleBin.aspx"],a[href*="recycle"],a[href*="recyclebin"],a[title*="Recycle"]').forEach(a=>{
+  console.log('Found:', a);
+  a.querySelectorAll('span, i, em, strong').forEach(el=>el.style.background='rgba(255,0,0,0.2)');
+});
